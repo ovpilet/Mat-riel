@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tableau de Réservation Multi-Articles</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        select, input[type="date"], input[type="text"] {
+            width: 100%;
+            padding: 0.5rem;
+            border-radius: 0.375rem; /* rounded-md */
+            border: 1px solid #D1D5DB; /* border-gray-300 */
+            box-sizing: border-box;
+        }
+        .table-container {
+            max-width: 1200px;
+            margin: 2rem auto;
+            padding: 1.5rem;
+            background-color: #f9fafb; /* bg-gray-50 */
+            border-radius: 0.5rem; /* rounded-lg */
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06); /* shadow-md */
+        }
+        .btn {
+            padding: 0.5rem 1rem;
+            border-radius: 0.375rem; /* rounded-md */
+            cursor: pointer;
+            transition: background-color 0.3s;
+            font-weight: 500;
+        }
+        .btn-primary {
+            background-color: #3B82F6; /* bg-blue-500 */
+            color: white;
+        }
+        .btn-primary:hover {
+            background-color: #2563EB; /* bg-blue-600 */
+        }
+        .btn-secondary {
+            background-color: #6B7280; /* bg-gray-500 */
+            color: white;
+        }
+        .btn-secondary:hover {
+            background-color: #4B5563; /* bg-gray-600 */
+        }
+        .btn-danger-small {
+            background-color: #FEE2E2; /* bg-red-100 */
+            color: #EF4444; /* text-red-500 */
+            padding: 0.25rem 0.5rem; /* smaller padding */
+            font-size: 0.875rem; /* smaller text */
+        }
+        .btn-danger-small:hover {
+            background-color: #FECACA; /* bg-red-200 */
+        }
+        .table th, .table td {
+            padding: 0.75rem;
+            text-align: left;
+            border-bottom: 1px solid #E5E7EB; /* border-gray-200 */
+            vertical-align: top;
+        }
+        .table th {
+            background-color: #F3F4F6; /* bg-gray-100 */
+        }
+        .articles-list .article-entry {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem; /* space-x-2 */
+            margin-bottom: 0.5rem; /* mb-2 */
+        }
+        .articles-list .article-entry select,
+        .articles-list .article-entry input[type="text"] {
+            flex-grow: 1;
+        }
+        .message-box {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: #10B981; /* bg-green-500 */
+            color: white;
+            padding: 1rem 1.5rem;
+            border-radius: 0.375rem; /* rounded-md */
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            z-index: 1000;
+            opacity: 0;
+            transition: opacity 0.5s ease-in-out;
+            display: none;
+        }
+        .message-box.show {
+            display: block;
+            opacity: 1;
+        }
+        .names-list .name-entry {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-bottom: 0.5rem;
+        }
+        .names-list .name-entry input {
+            flex-grow: 1;
+        }
+        .hidden {
+            display: none;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 p-4">
+
+    <div class="table-container">
+        <h1 class="text-2xl font-semibold mb-6 text-center text-gray-700">Tableau Interactif de Réservation (Multi-Articles)</h1>
+        
+        <button id="addReservationBtn" class="btn btn-primary mb-4">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5 inline-block mr-1">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+            </svg>
+            Ajouter une réservation
+        </button>
+
+        <table class="min-w-full bg-white rounded-lg shadow overflow-hidden table">
+            <thead>
+                <tr>
+                    <th class="w-[20%]">Nom(s)</th>
+                    <th class="w-[15%]">Date Départ</th>
+                    <th class="w-[15%]">Date Retour</th>
+                    <th class="w-[40%]">Articles</th>
+                    <th class="w-[10%]">Action</th>
+                </tr>
+            </thead>
+            <tbody id="tableBody">
+                </tbody>
+        </table>
+    </div>
+
+    <div id="messageBox" class="message-box">Message</div>
+
+    <script>
+        // Données pour les catégories et les articles
+        const data = {
+            "Caméra": ["Petite Sony 1", "Petite Sony 2", "Grande Sony", "GH5", "Osmo Poket 1"],
+            "Lumière": ["Panneau LED", "Mandarine 800W", "Softbox", "Réflecteur"],
+            "Son": ["Micro cravate HF", "Perche + Micro", "Enregistreur Zoom H4N"],
+            "Accessoire": ["Trépied", "Batterie NP-F", "Carte SD", "Gaffer"],
+            "Autre": ["Fond vert", "Stabilisateur", "Drone"]
+        };
+
+        const tableBody = document.getElementById('tableBody');
+        const addReservationBtn = document.getElementById('addReservationBtn');
+        const messageBox = document.getElementById('messageBox');
+
+        let reservationCounter = 0;
+
+        // Fonction pour afficher un message temporaire
+        function showMessage(text, duration = 3000) {
+            messageBox.textContent = text;
+            messageBox.classList.add('show');
+            setTimeout(() => {
+                messageBox.classList.remove('show');
+            }, duration);
+        }
+
+        // Fonction pour mettre à jour le menu déroulant des articles
+        function updateItemSelect(categorySelectElement, itemSelectElement, newItemInput) {
+            const selectedCategory = categorySelectElement.value;
+            itemSelectElement.innerHTML = ''; // Vide les anciennes options
+            
+            const defaultItemOption = document.createElement('option');
+            defaultItemOption.value = "";
+            defaultItemOption.textContent = "-- Choisir article --";
+            itemSelectElement.appendChild(defaultItemOption);
+
+            if (selectedCategory && data[selectedCategory]) {
+                itemSelectElement.disabled = false;
+                data[selectedCategory].forEach(item => {
+                    const option = document.createElement('option');
+                    option.value = item;
+                    option.textContent = item;
+                    itemSelectElement.appendChild(option);
+                });
+                // Add the "Other / New" option
+                const otherOption = document.createElement('option');
+                otherOption.value = "new-item";
+                otherOption.textContent = "Autre / Nouveau...";
+                itemSelectElement.appendChild(otherOption);
+            } else {
+                itemSelectElement.disabled = true;
+            }
+
+            // Hide the new item input initially
+            newItemInput.classList.add('hidden');
+            newItemInput.value = ''; // Clear its value
+        }
+
+        // Fonction pour ajouter un champ de nom à une réservation
+        function addNameInputToReservation(namesListDiv) {
+            const nameEntryDiv = document.createElement('div');
+            nameEntryDiv.classList.add('name-entry');
+
+            const nameInput = document.createElement('input');
+            nameInput.type = 'text';
+            nameInput.placeholder = 'Nom du responsable';
+            nameInput.classList.add('p-2', 'border', 'rounded-md');
+
+            const removeNameBtn = document.createElement('button');
+            removeNameBtn.classList.add('btn', 'btn-danger-small');
+            removeNameBtn.innerHTML = `
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>`;
+            removeNameBtn.title = "Supprimer ce nom";
+            removeNameBtn.onclick = function() {
+                nameEntryDiv.remove();
+                showMessage('Nom retiré.', 1500);
+            };
+
+            nameEntryDiv.appendChild(nameInput);
+            nameEntryDiv.appendChild(removeNameBtn);
+            namesListDiv.appendChild(nameEntryDiv);
+        }
+
+        // Fonction pour ajouter un article à une réservation existante
+        function addArticleToReservation(articlesListDiv) {
+            const articleEntryDiv = document.createElement('div');
+            articleEntryDiv.classList.add('article-entry');
+
+            const categorySelect = document.createElement('select');
+            categorySelect.classList.add('category-select-article', 'p-2', 'border', 'rounded-md');
+            const defaultCategoryOption = document.createElement('option');
+            defaultCategoryOption.value = "";
+            defaultCategoryOption.textContent = "-- Catégorie --";
+            categorySelect.appendChild(defaultCategoryOption);
+            for (const category in data) {
+                const option = document.createElement('option');
+                option.value = category;
+                option.textContent = category;
+                categorySelect.appendChild(option);
+            }
+
+            const itemSelect = document.createElement('select');
+            itemSelect.classList.add('item-select-article', 'p-2', 'border', 'rounded-md');
+            itemSelect.disabled = true;
+            const defaultItemOption = document.createElement('option');
+            defaultItemOption.value = "";
+            defaultItemOption.textContent = "-- Article --";
+            itemSelect.appendChild(defaultItemOption);
+
+            const newItemInput = document.createElement('input');
+            newItemInput.type = 'text';
+            newItemInput.placeholder = 'Nom du nouvel article';
+            newItemInput.classList.add('p-2', 'border', 'rounded-md', 'hidden'); // Hidden by default
+
+
+            categorySelect.addEventListener('change', function() {
+                updateItemSelect(this, itemSelect, newItemInput);
+            });
+
+            itemSelect.addEventListener('change', function() {
+                if (this.value === 'new-item') {
+                    newItemInput.classList.remove('hidden');
+                    newItemInput.focus();
+                } else {
+                    newItemInput.classList.add('hidden');
+                    newItemInput.value = ''; // Clear value if not 'new-item'
+                }
+            });
+
+            const removeArticleBtn = document.createElement('button');
+            removeArticleBtn.classList.add('btn', 'btn-danger-small');
+            removeArticleBtn.innerHTML = `
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>`;
+            removeArticleBtn.title = "Supprimer cet article";
+            removeArticleBtn.onclick = function() {
+                articleEntryDiv.remove();
+                showMessage('Article retiré de la réservation.', 1500);
+            };
+
+            articleEntryDiv.appendChild(categorySelect);
+            articleEntryDiv.appendChild(itemSelect);
+            articleEntryDiv.appendChild(newItemInput); // Add the new item input
+            articleEntryDiv.appendChild(removeArticleBtn);
+            articlesListDiv.appendChild(articleEntryDiv);
+        }
+
+        // Fonction pour ajouter une nouvelle ligne de RESERVATION au tableau
+        function addReservationRow() {
+            reservationCounter++;
+            const newRow = tableBody.insertRow();
+            newRow.id = `reservation-${reservationCounter}`;
+
+            // Cellule pour le Nom(s)
+            const nameCell = newRow.insertCell();
+            const namesListDiv = document.createElement('div');
+            namesListDiv.classList.add('names-list', 'mb-2');
+            nameCell.appendChild(namesListDiv);
+            
+            const addNameBtnInternal = document.createElement('button');
+            addNameBtnInternal.classList.add('btn', 'btn-secondary', 'text-sm', 'py-1', 'px-2', 'mb-2'); // Added mb-2 for spacing
+            addNameBtnInternal.innerHTML = `
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4 inline-block mr-1">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v12m6-6H6" />
+                </svg>
+                Ajouter un nom`;
+            addNameBtnInternal.onclick = function() {
+                addNameInputToReservation(namesListDiv);
+            };
+            nameCell.appendChild(addNameBtnInternal);
+            // Add initial name input
+            addNameInputToReservation(namesListDiv);
+
+
+            // Cellule pour la date de départ
+            const startDateCell = newRow.insertCell();
+            const startDateInput = document.createElement('input');
+            startDateInput.type = 'date';
+            startDateInput.classList.add('start-date-input', 'p-2', 'border', 'rounded-md');
+            startDateCell.appendChild(startDateInput);
+
+            // Cellule pour la date de retour
+            const endDateCell = newRow.insertCell();
+            const endDateInput = document.createElement('input');
+            endDateInput.type = 'date';
+            endDateInput.classList.add('end-date-input', 'p-2', 'border', 'rounded-md');
+            endDateCell.appendChild(endDateInput);
+            
+            // Cellule pour les articles
+            const articlesCell = newRow.insertCell();
+            const articlesListDiv = document.createElement('div');
+            articlesListDiv.classList.add('articles-list', 'mb-2'); // mb-2 pour espacer du bouton "Ajouter article"
+            articlesCell.appendChild(articlesListDiv); // Ajoute d'abord la liste (qui sera remplie)
+
+            const addArticleBtnInternal = document.createElement('button');
+            addArticleBtnInternal.classList.add('btn', 'btn-secondary', 'text-sm', 'py-1', 'px-2'); // Smaller button
+            addArticleBtnInternal.innerHTML = `
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4 inline-block mr-1">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v12m6-6H6" />
+                </svg>
+                Ajouter un article`;
+            addArticleBtnInternal.onclick = function() {
+                addArticleToReservation(articlesListDiv);
+            };
+            articlesCell.appendChild(addArticleBtnInternal); // Puis le bouton pour ajouter à CETTE liste
+            // Add initial article row
+            addArticleToReservation(articlesListDiv);
+
+
+            // Cellule pour le bouton de suppression de la RESERVATION
+            const actionCell = newRow.insertCell();
+            const deleteReservationBtn = document.createElement('button');
+            deleteReservationBtn.classList.add('p-2', 'rounded-md', 'hover:bg-red-100', 'block', 'mx-auto'); // Centrer le bouton
+            deleteReservationBtn.innerHTML = `
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6 text-red-500 hover:text-red-700">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12.56 0c.342.052.682.107 1.022.166m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" />
+                </svg>
+            `;
+            deleteReservationBtn.title = "Supprimer cette réservation";
+            deleteReservationBtn.onclick = function() {
+                newRow.remove();
+                showMessage('Réservation supprimée.', 2000);
+            };
+            actionCell.appendChild(deleteReservationBtn);
+
+            showMessage('Nouvelle réservation ajoutée ! Remplissez les détails et ajoutez des articles.', 2500);
+        }
+        
+        // Événement pour le bouton "Ajouter une réservation"
+        addReservationBtn.addEventListener('click', addReservationRow);
+
+    </script>
+
+</body>
+</html>
