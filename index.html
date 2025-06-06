@@ -199,11 +199,11 @@
 
     <script>
         // --- Configuration de l'API ---
-        // !!! REMPLACEZ CETTE URL PAR VOTRE PROPRE URL DE DÉPLOIEMENT GOOGLE APPS SCRIPT !!!
-        const GOOGLE_APPS_SCRIPT_API_URL = 'https://script.google.com/macros/s/AKfycbxeYItICJG8R31TnsgMTlhoed9bhp5lnaa-9cqAH933deMxb1NlhBE_fsNaCMfp4pu8/exec';
+        // !!! L'URL de déploiement n'est plus nécessaire ici pour les appels google.script.run !!!
+        // Elle serait nécessaire si vous faisiez un déploiement "Web App" avec une URL `/exec` pour des appels fetch/HTTP classiques.
 
         // Données initiales (seront remplacées par les données de l'API)
-        let data = {}; // Articles
+        let categoriesAndItems = {}; // Articles
         let existingNames = []; // Noms
 
         const tableBody = document.getElementById('tableBody');
@@ -217,65 +217,23 @@
         let reservationCounter = 0; // Maintenir un compteur global pour les IDs de ligne
         let calendar; // Variable pour stocker l'instance du calendrier
 
-        // --- Fonctions d'interaction avec l'API Google Apps Script ---
+        // --- Fonctions d'interaction avec Google Apps Script (maintenant via google.script.run) ---
 
         /**
-         * Envoie une requête GET à l'API.
-         * @param {string} action - L'action à effectuer (ex: 'getReservations').
-         * @returns {Promise<Object>} La réponse JSON de l'API.
+         * Gère les erreurs des appels google.script.run.
+         * @param {Error} error - L'objet erreur.
          */
-        async function fetchApiData(action) {
-            try {
-                const response = await fetch(`${GOOGLE_APPS_SCRIPT_API_URL}?action=${action}`);
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
-                const result = await response.json();
-                if (result.status !== 200) {
-                    throw new Error(`API error: ${result.message || 'Unknown error'} - Data: ${JSON.stringify(result.data)}`);
-                }
-                return result.data;
-            } catch (error) {
-                console.error(`Error fetching data for ${action}:`, error);
-                showMessage(`Erreur lors du chargement des données: ${error.message}`, 4000);
-                return null;
-            }
-        }
-
-        /**
-         * Envoie une requête POST à l'API.
-         * @param {string} action - L'action à effectuer (ex: 'saveReservations').
-         * @param {Object} payload - Les données à envoyer.
-         * @returns {Promise<Object>} La réponse JSON de l'API.
-         */
-        async function postApiData(action, payload) {
-            try {
-                const response = await fetch(`${GOOGLE_APPS_SCRIPT_API_URL}?action=${action}`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'text/plain;charset=utf-8', // Google Apps Script attend text/plain
-                    },
-                    body: JSON.stringify(payload),
-                });
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
-                const result = await response.json();
-                if (result.status !== 200) {
-                    throw new Error(`API error: ${result.message || 'Unknown error'} - Data: ${JSON.stringify(result.data)}`);
-                }
-                return result.data;
-            } catch (error) {
-                console.error(`Error saving data for ${action}:`, error);
-                showMessage(`Erreur lors de la sauvegarde: ${error.message}`, 4000);
-                return null;
-            }
+        function handleError(error) {
+            console.error('Erreur Apps Script:', error);
+            showMessage(`Erreur: ${error.message || 'Une erreur inconnue est survenue.'}`, 5000, 'bg-red-500'); // Utilisez une couleur rouge pour les erreurs
         }
 
         // Fonction pour afficher un message temporaire
-        function showMessage(text, duration = 3000) {
+        function showMessage(text, duration = 3000, bgColor = 'bg-green-500') {
             messageBox.textContent = text;
-            messageBox.classList.add('show');
+            messageBox.style.backgroundColor = ''; // Réinitialise la couleur pour enlever les classes Tailwind
+            messageBox.classList.remove('bg-green-500', 'bg-red-500'); // Supprime les anciennes classes
+            messageBox.classList.add(bgColor, 'show');
             setTimeout(() => {
                 messageBox.classList.remove('show');
             }, duration);
@@ -291,9 +249,9 @@
             defaultItemOption.textContent = "-- Choisir article --";
             itemSelectElement.appendChild(defaultItemOption);
 
-            if (selectedCategory && data[selectedCategory]) {
+            if (selectedCategory && categoriesAndItems[selectedCategory]) {
                 itemSelectElement.disabled = false;
-                data[selectedCategory].forEach(item => {
+                categoriesAndItems[selectedCategory].forEach(item => {
                     const option = document.createElement('option');
                     option.value = item;
                     option.textContent = item;
@@ -361,7 +319,7 @@
 
             const nameSelect = document.createElement('select');
             nameSelect.classList.add('name-select', 'p-2', 'border', 'rounded-md');
-            nameSelect.addEventListener('change', async function() { // Marqué comme async
+            nameSelect.addEventListener('change', async function() {
                 if (this.value === 'new-name') {
                     newNameInput.classList.remove('hidden');
                     newNameInput.focus();
@@ -369,14 +327,14 @@
                     newNameInput.classList.add('hidden');
                     newNameInput.value = '';
                 }
-                await saveReservations(); 
+                await saveReservations();
             });
 
             const newNameInput = document.createElement('input');
             newNameInput.type = 'text';
             newNameInput.placeholder = 'Nouveau nom';
             newNameInput.classList.add('p-2', 'border', 'rounded-md', 'hidden');
-            newNameInput.addEventListener('blur', async function() { // Marqué comme async
+            newNameInput.addEventListener('blur', async function() {
                 if (this.value.trim() !== '') {
                     if (!existingNames.includes(this.value.trim())) {
                         existingNames.push(this.value.trim());
@@ -390,7 +348,7 @@
                     newNameInput.classList.add('hidden');
                     newNameInput.value = '';
                 }
-                await saveReservations(); 
+                await saveReservations();
             });
 
 
@@ -401,9 +359,9 @@
                   <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
                 </svg>`;
             removeNameBtn.title = "Supprimer ce nom";
-            removeNameBtn.onclick = async function() { // Marqué comme async
+            removeNameBtn.onclick = async function() {
                 nameEntryDiv.remove();
-                await saveReservations(); 
+                await saveReservations();
                 showMessage('Nom retiré.', 1500);
             };
 
@@ -432,16 +390,16 @@
 
             const categorySelect = document.createElement('select');
             categorySelect.classList.add('category-select-article', 'p-2', 'border', 'rounded-md');
-            categorySelect.addEventListener('change', async function() { // Marqué comme async
+            categorySelect.addEventListener('change', async function() {
                 updateItemSelect(this, itemSelect, newItemInput);
-                await saveReservations(); 
+                await saveReservations();
             });
 
             const defaultCategoryOption = document.createElement('option');
             defaultCategoryOption.value = "";
             defaultCategoryOption.textContent = "-- Catégorie --";
             categorySelect.appendChild(defaultCategoryOption);
-            for (const category in data) {
+            for (const category in categoriesAndItems) {
                 const option = document.createElement('option');
                 option.value = category;
                 option.textContent = category;
@@ -451,7 +409,7 @@
             const itemSelect = document.createElement('select');
             itemSelect.classList.add('item-select-article', 'p-2', 'border', 'rounded-md');
             itemSelect.disabled = true;
-            itemSelect.addEventListener('change', async function() { // Marqué comme async
+            itemSelect.addEventListener('change', async function() {
                 if (this.value === 'new-item') {
                     newItemInput.classList.remove('hidden');
                     newItemInput.focus();
@@ -459,7 +417,7 @@
                     newItemInput.classList.add('hidden');
                     newItemInput.value = '';
                 }
-                await saveReservations(); 
+                await saveReservations();
             });
 
             const defaultItemOption = document.createElement('option');
@@ -472,15 +430,15 @@
             newItemInput.placeholder = 'Nom du nouvel article';
             newItemInput.classList.add('p-2', 'border', 'rounded-md', 'hidden');
 
-            newItemInput.addEventListener('blur', async function() { // Marqué comme async
+            newItemInput.addEventListener('blur', async function() {
                 const selectedCategory = categorySelect.value;
                 if (this.value.trim() !== '' && selectedCategory) {
-                    if (!data[selectedCategory]) {
-                        data[selectedCategory] = [];
+                    if (!categoriesAndItems[selectedCategory]) {
+                        categoriesAndItems[selectedCategory] = [];
                     }
-                    if (!data[selectedCategory].includes(this.value.trim())) {
-                        data[selectedCategory].push(this.value.trim());
-                        data[selectedCategory].sort((a, b) => a.localeCompare(b));
+                    if (!categoriesAndItems[selectedCategory].includes(this.value.trim())) {
+                        categoriesAndItems[selectedCategory].push(this.value.trim());
+                        categoriesAndItems[selectedCategory].sort((a, b) => a.localeCompare(b));
                         showMessage(`"${this.value.trim()}" ajouté à la catégorie "${selectedCategory}".`, 2000);
                     } else {
                         showMessage(`"${this.value.trim()}" existe déjà dans cette catégorie.`, 2000);
@@ -497,7 +455,7 @@
                     newItemInput.classList.add('hidden');
                     newItemInput.value = '';
                 }
-                await saveReservations(); 
+                await saveReservations();
             });
 
 
@@ -508,9 +466,9 @@
                   <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
                 </svg>`;
             removeArticleBtn.title = "Supprimer cet article";
-            removeArticleBtn.onclick = async function() { // Marqué comme async
+            removeArticleBtn.onclick = async function() {
                 articleEntryDiv.remove();
-                await saveReservations(); 
+                await saveReservations();
                 showMessage('Article retiré de la réservation.', 1500);
             };
 
@@ -524,7 +482,7 @@
                 categorySelect.value = initialCategory;
                 updateItemSelect(categorySelect, itemSelect, newItemInput);
                 if (initialItem) {
-                    if (data[initialCategory] && data[initialCategory].includes(initialItem)) {
+                    if (categoriesAndItems[initialCategory] && categoriesAndItems[initialCategory].includes(initialItem)) {
                         itemSelect.value = initialItem;
                     } else {
                         itemSelect.value = 'new-item';
@@ -536,7 +494,7 @@
         }
 
         // Fonction pour ajouter une nouvelle ligne de RESERVATION au tableau
-        async function addReservationRow(reservation = {}) { 
+        async function addReservationRow(reservation = {}) {
             const newRow = tableBody.insertRow();
             newRow.id = `reservation-${++reservationCounter}`;
 
@@ -553,9 +511,9 @@
                   <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v12m6-6H6" />
                 </svg>
                 Ajouter un nom`;
-            addNameBtnInternal.onclick = async function() { // Marqué comme async
-                await addNameInputToReservation(namesListDiv); 
-                await saveReservations(); 
+            addNameBtnInternal.onclick = async function() {
+                await addNameInputToReservation(namesListDiv);
+                await saveReservations();
             };
             nameCell.appendChild(addNameBtnInternal);
 
@@ -564,7 +522,7 @@
                     await addNameInputToReservation(namesListDiv, name);
                 }
             } else {
-                await addNameInputToReservation(namesListDiv); 
+                await addNameInputToReservation(namesListDiv);
             }
 
 
@@ -573,7 +531,7 @@
             const startDateInput = document.createElement('input');
             startDateInput.type = 'date';
             startDateInput.classList.add('start-date-input', 'p-2', 'border', 'rounded-md');
-            startDateInput.addEventListener('change', async () => { await saveReservations(); }); 
+            startDateInput.addEventListener('change', async () => { await saveReservations(); });
             startDateInput.value = reservation.startDate || '';
             startDateCell.appendChild(startDateInput);
 
@@ -582,7 +540,7 @@
             const endDateInput = document.createElement('input');
             endDateInput.type = 'date';
             endDateInput.classList.add('end-date-input', 'p-2', 'border', 'rounded-md');
-            endDateInput.addEventListener('change', async () => { await saveReservations(); }); 
+            endDateInput.addEventListener('change', async () => { await saveReservations(); });
             endDateInput.value = reservation.endDate || '';
             endDateCell.appendChild(endDateInput);
             
@@ -599,9 +557,9 @@
                   <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v12m6-6H6" />
                 </svg>
                 Ajouter un article`;
-            addArticleBtnInternal.onclick = async function() { // Marqué comme async
-                await addArticleToReservation(articlesListDiv); 
-                await saveReservations(); 
+            addArticleBtnInternal.onclick = async function() {
+                await addArticleToReservation(articlesListDiv);
+                await saveReservations();
             };
             articlesCell.appendChild(addArticleBtnInternal);
             
@@ -610,7 +568,7 @@
                     await addArticleToReservation(articlesListDiv, article.category, article.name);
                 }
             } else {
-                await addArticleToReservation(articlesListDiv); 
+                await addArticleToReservation(articlesListDiv);
             }
 
 
@@ -633,7 +591,7 @@
             }
         }
 
-        // Fonction pour sauvegarder les données du tableau via l'API (déplacée pour être avant les appels)
+        // Fonction pour sauvegarder les données du tableau via google.script.run
         async function saveReservations() {
             const reservations = [];
             const rows = tableBody.rows;
@@ -654,7 +612,7 @@
                     if (nameSelect && nameSelect.value && nameSelect.value !== '' && nameSelect.value !== 'new-name') {
                         reservation.names.push(nameSelect.value);
                     } else if (newNameInput && newNameInput.value.trim() !== '') {
-                        if (!reservation.names.includes(newNameInput.value.trim())) { 
+                        if (!reservation.names.includes(newNameInput.value.trim())) {
                            reservation.names.push(newNameInput.value.trim());
                         }
                     }
@@ -682,70 +640,87 @@
                 reservations.push(reservation);
             }
             
-            const results = await Promise.all([
-                postApiData('saveReservations', reservations),
-                postApiData('saveNames', existingNames),
-                postApiData('saveArticles', data)
-            ]);
+            // Utilisez google.script.run pour appeler les fonctions Apps Script
+            try {
+                // Sauvegarde les réservations
+                const reservationResult = await google.script.run
+                    .withSuccessHandler(res => {
+                        if (res.status !== 200) handleError(new Error(res.message));
+                    })
+                    .withFailureHandler(handleError)
+                    .saveReservation(reservations); // Note: saveReservation attend une seule réservation, nous allons l'adapter si nécessaire
+                
+                // Sauvegarde les noms existants
+                const namesResult = await google.script.run
+                    .withSuccessHandler(res => {
+                        if (res.status !== 200) handleError(new Error(res.message));
+                    })
+                    .withFailureHandler(handleError)
+                    .saveNames(existingNames); // Assurez-vous que saveNames est une fonction dans Code.gs
 
-            const allSucceeded = results.every(res => res !== null);
-            if (allSucceeded) {
-                showMessage('Réservations et listes sauvegardées en ligne.', 1500);
-            } else {
-                showMessage('Certaines données n\'ont pas pu être sauvegardées.', 3000);
+                // Sauvegarde les catégories et articles (si vous avez une telle fonction)
+                const categoriesResult = await google.script.run
+                    .withSuccessHandler(res => {
+                        if (res.status !== 200) handleError(new Error(res.message));
+                    })
+                    .withFailureHandler(handleError)
+                    .saveCategoriesAndItems(categoriesAndItems); // Assurez-vous que saveCategoriesAndItems est une fonction dans Code.gs
+
+                // Recharger les données après une sauvegarde réussie pour s'assurer de la cohérence
+                await loadAllData(); 
+                showMessage('Données sauvegardées avec succès !', 2000);
+
+            } catch (error) {
+                handleError(error);
             }
         }
 
-        // Fonction pour charger les données depuis l'API et reconstruire le tableau (déplacée pour être avant les appels)
-        async function loadReservations() {
-            showMessage('Chargement des données...', 1000);
-            
-            const [loadedNamesData, loadedArticlesData, loadedReservationsData] = await Promise.all([
-                fetchApiData('getNames'),
-                fetchApiData('getArticles'),
-                fetchApiData('getReservations')
-            ]);
+        // Fonction pour charger les données (catégories/articles et noms existants) au démarrage
+        async function loadAllData() {
+            try {
+                // Charger les catégories et articles
+                const articlesResponse = await google.script.run
+                    .withSuccessHandler(data => {
+                        categoriesAndItems = data.categoriesAndItems || {};
+                    })
+                    .withFailureHandler(handleError)
+                    .getCategoriesAndItems(); // Assurez-vous que getCategoriesAndItems existe dans Code.gs
 
-            if (loadedNamesData && Array.isArray(loadedNamesData.names)) {
-                existingNames = loadedNamesData.names;
-                existingNames.sort((a, b) => a.localeCompare(b));
-            } else {
-                existingNames = []; 
+                // Charger les noms existants
+                const namesResponse = await google.script.run
+                    .withSuccessHandler(data => {
+                        existingNames = data.names || [];
+                    })
+                    .withFailureHandler(handleError)
+                    .getNames(); // Assurez-vous que getNames existe dans Code.gs
+
+                // Charger les réservations et les afficher
+                const reservationsResponse = await google.script.run
+                    .withSuccessHandler(response => {
+                        if (response.status === 200 && response.data && response.data.reservations) {
+                            tableBody.innerHTML = ''; // Nettoyer le tableau avant de charger
+                            reservationCounter = 0; // Réinitialiser le compteur d'ID
+                            response.data.reservations.forEach(reservation => {
+                                // Passer un flag isInitialLoad pour ne pas sauvegarder chaque ligne individuellement
+                                addReservationRow({ ...reservation, isInitialLoad: true });
+                            });
+                            updateCalendarEvents(response.data.reservations); // Mettre à jour le calendrier
+                        } else {
+                            handleError(new Error(response.message || 'Erreur lors du chargement des réservations.'));
+                        }
+                    })
+                    .withFailureHandler(handleError)
+                    .getReservations();
+
+            } catch (error) {
+                handleError(error);
             }
-
-            if (loadedArticlesData && typeof loadedArticlesData.articles === 'object' && loadedArticlesData.articles !== null) {
-                data = loadedArticlesData.articles;
-                for (const category in data) {
-                    if (Array.isArray(data[category])) {
-                        data[category].sort((a, b) => a.localeCompare(b));
-                    }
-                }
-            } else {
-                data = {}; 
-            }
-
-            tableBody.innerHTML = ''; 
-            reservationCounter = 0; 
-
-            if (loadedReservationsData && Array.isArray(loadedReservationsData.reservations) && loadedReservationsData.reservations.length > 0) {
-                // Utilisation de Promise.all pour s'assurer que toutes les lignes sont ajoutées avant la sauvegarde
-                await Promise.all(loadedReservationsData.reservations.map(async res => {
-                    // Ajouter un indicateur 'isInitialLoad' pour éviter la sauvegarde multiple lors du chargement
-                    await addReservationRow({ ...res, isInitialLoad: true }); 
-                }));
-                showMessage('Données chargées et tableau mis à jour.', 2000);
-            } else {
-                addReservationRow(); // Ajouter une ligne vide si aucune donnée n'est chargée
-                showMessage('Aucune réservation trouvée. Une nouvelle ligne a été ajoutée.', 2000);
-            }
-            updateCalendarEvents(); // Mettre à jour le calendrier après le chargement des réservations
         }
-
-        // --- Fonctions du Calendrier (FullCalendar) ---
-
-        function initializeCalendar() {
+        
+        // Initialisation du calendrier FullCalendar
+        function initializeCalendar(events = []) {
             if (calendar) {
-                calendar.destroy(); // Détruire l'ancienne instance si elle existe
+                calendar.destroy(); // Détruire l'instance précédente si elle existe
             }
             calendar = new FullCalendar.Calendar(calendarEl, {
                 initialView: 'dayGridMonth',
@@ -755,116 +730,89 @@
                     center: 'title',
                     right: 'dayGridMonth,timeGridWeek,timeGridDay'
                 },
-                events: [], // Les événements seront chargés dynamiquement
-                eventClick: function(info) {
-                    // Optionnel: Gérer le clic sur un événement (ex: afficher les détails de la réservation)
-                    const reservationDetails = info.event.extendedProps.reservation;
-                    let detailsString = `
-                        <strong>Noms:</strong> ${reservationDetails.names.join(', ')}<br>
-                        <strong>Articles:</strong>
-                    `;
-                    reservationDetails.articles.forEach(article => {
-                        detailsString += `<br>&nbsp;&nbsp;- ${article.name} (${article.category})`;
-                    });
-                    showMessage(`Détails de la réservation:<br>${detailsString}`, 5000);
+                events: events,
+                eventDidMount: function(info) {
+                    // Personnaliser l'affichage des événements ici si nécessaire
+                    info.el.title = `Réservation pour: ${info.event.title}\nDu: ${info.event.start.toLocaleDateString('fr-FR')}\nAu: ${info.event.end ? info.event.end.toLocaleDateString('fr-FR') : 'N/A'}`;
                 }
             });
             calendar.render();
         }
 
-        function updateCalendarEvents() {
-            if (!calendar) {
-                initializeCalendar();
-            }
-            const events = [];
-            const rows = tableBody.rows;
-
-            for (let i = 0; i < rows.length; i++) {
-                const row = rows[i];
-                const names = Array.from(row.querySelectorAll('.name-entry .name-select'))
-                               .map(select => select.value)
-                               .filter(value => value !== '' && value !== 'new-name');
-                
-                // Récupérer les noms entrés dans les champs "new-name"
-                row.querySelectorAll('.name-entry input[type="text"]:not(.hidden)').forEach(input => {
-                    if (input.value.trim() !== '' && !names.includes(input.value.trim())) {
-                        names.push(input.value.trim());
-                    }
-                });
-
-                const startDate = row.querySelector('.start-date-input').value;
-                const endDate = row.querySelector('.end-date-input').value; // Date de retour est incluse
-
-                const articles = Array.from(row.querySelectorAll('.article-entry')).map(articleEntry => {
-                    const categorySelect = articleEntry.querySelector('.category-select-article');
-                    const itemSelect = articleEntry.querySelector('.item-select-article');
-                    const newItemInput = articleEntry.querySelector('input[type="text"]');
-
-                    let category = categorySelect ? categorySelect.value : '';
-                    let name = '';
-                    if (itemSelect && itemSelect.value && itemSelect.value !== '' && itemSelect.value !== 'new-item') {
-                        name = itemSelect.value;
-                    } else if (newItemInput && newItemInput.value.trim() !== '') {
-                        name = newItemInput.value.trim();
-                    }
-                    return { category, name };
-                }).filter(article => article.category && article.name);
-
-                if (startDate && endDate && names.length > 0 && articles.length > 0) {
-                    const title = `${names.join(', ')} - ${articles.map(a => a.name).join(', ')}`;
-                    
-                    // FullCalendar exclut la date de fin par défaut pour dayGridMonth.
-                    // Pour inclure la date de fin, nous devons ajouter un jour.
-                    const adjustedEndDate = new Date(endDate);
-                    adjustedEndDate.setDate(adjustedEndDate.getDate() + 1);
-
-                    events.push({
-                        title: title,
-                        start: startDate,
-                        end: adjustedEndDate.toISOString().split('T')[0], // Format YYYY-MM-DD
-                        allDay: true,
-                        // Stocker les détails complets de la réservation pour les afficher au clic
-                        extendedProps: {
-                            reservation: {
-                                names: names,
-                                startDate: startDate,
-                                endDate: endDate,
-                                articles: articles
-                            }
-                        }
-                    });
+        // Met à jour les événements du calendrier
+        function updateCalendarEvents(reservations) {
+            const events = reservations.map(res => {
+                // FullCalendar attend les dates au format YYYY-MM-DD pour `start` et `end`
+                // `res.startDate` et `res.endDate` devraient déjà être dans ce format grâce à Code.gs
+                let endDate = res.endDate;
+                // Ajuster la date de fin pour FullCalendar pour que l'événement soit inclusif du jour de fin
+                if (endDate) {
+                    let date = new Date(endDate);
+                    date.setDate(date.getDate() + 1); // Ajouter un jour pour inclure la fin dans l'affichage
+                    endDate = date.toISOString().split('T')[0];
                 }
+
+                return {
+                    title: res.names.join(', ') + ' - ' + res.articles.map(a => a.name).join(', '),
+                    start: res.startDate,
+                    end: endDate, // Adjusted end date
+                    allDay: true,
+                    // Vous pouvez ajouter d'autres propriétés personnalisées ici si nécessaire
+                    // par exemple, une couleur différente basée sur l'article
+                    backgroundColor: getRandomColor(), // Exemple: couleur aléatoire
+                    borderColor: getRandomColor()
+                };
+            });
+
+            if (calendar) {
+                calendar.setOption('events', events);
+                calendar.render(); // Re-render pour appliquer les nouveaux événements
+            } else {
+                initializeCalendar(events); // Initialiser si ce n'est pas déjà fait
             }
-            calendar.setOption('events', events);
         }
 
-        // --- Écouteurs d'événements globaux ---
+        // Fonction utilitaire pour générer des couleurs aléatoires (pour le calendrier)
+        function getRandomColor() {
+            const letters = '0123456789ABCDEF';
+            let color = '#';
+            for (let i = 0; i < 6; i++) {
+                color += letters[Math.floor(Math.random() * 16)];
+            }
+            return color;
+        }
 
-        addReservationBtn.addEventListener('click', addReservationRow);
+
+        // --- Listeners d'événements ---
+
+        addReservationBtn.addEventListener('click', async () => {
+            await addReservationRow();
+            showMessage('Nouvelle réservation ajoutée.', 1500);
+        });
 
         showCalendarBtn.addEventListener('click', () => {
             calendarModal.classList.add('open');
-            initializeCalendar(); // Initialiser ou réinitialiser le calendrier
-            updateCalendarEvents(); // Mettre à jour les événements du calendrier
-            calendar.render(); // S'assurer que le calendrier est rendu
+            // Le calendrier est mis à jour lors du chargement des données
+            // Si les données changent après l'ouverture, vous devrez ré-appeler updateCalendarEvents
         });
 
         closeCalendarModalBtn.addEventListener('click', () => {
             calendarModal.classList.remove('open');
         });
 
-        // Fermer la modale si l'utilisateur clique en dehors du contenu
+        // Fermer la modale si l'utilisateur clique en dehors
         calendarModal.addEventListener('click', (e) => {
             if (e.target === calendarModal) {
                 calendarModal.classList.remove('open');
             }
         });
 
-        // --- Initialisation au chargement de la page ---
+
+        // --- Exécution au chargement initial de la page ---
         document.addEventListener('DOMContentLoaded', async () => {
-            await loadReservations();
-            // initializeCalendar(); // Initialiser une première fois au chargement pour s'assurer que tout est prêt.
-                                   // Sera réinitialisé quand on clique sur le bouton "Voir sur le calendrier"
+            // Initialiser le calendrier avant de charger les événements
+            initializeCalendar();
+            await loadAllData(); // Charge toutes les données initiales du Apps Script
         });
     </script>
 </body>
