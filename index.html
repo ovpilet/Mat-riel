@@ -1,848 +1,274 @@
 <!DOCTYPE html>
-<html lang="fr">
+<html>
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Tableau de Réservation Persistant & Calendrier</title>
-    <script src="https://cdn.tailwindcss.com"></script>
+    <base target="_top">
+    <title>Système de Réservation</title>
     <style>
         body {
-            font-family: 'Inter', sans-serif;
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #f4f4f4;
         }
-        select, input[type="date"], input[type="text"] {
-            width: 100%;
-            padding: 0.5rem;
-            border-radius: 0.375rem; /* rounded-md */
-            border: 1px solid #D1D5DB; /* border-gray-300 */
-            box-sizing: border-box;
+        .container {
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            max-width: 900px;
+            margin: auto;
         }
-        .table-container {
-            max-width: 1200px;
-            margin: 2rem auto;
-            padding: 1.5rem;
-            background-color: #f9fafb; /* bg-gray-50 */
-            border-radius: 0.5rem; /* rounded-lg */
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06); /* shadow-md */
+        h2, h3 {
+            color: #333;
         }
-        .btn {
-            padding: 0.5rem 1rem;
-            border-radius: 0.375rem; /* rounded-md */
-            cursor: pointer;
-            transition: background-color 0.3s;
-            font-weight: 500;
+        .form-group {
+            margin-bottom: 15px;
         }
-        .btn-primary {
-            background-color: #3B82F6; /* bg-blue-500 */
-            color: white;
-        }
-        .btn-primary:hover {
-            background-color: #2563EB; /* bg-blue-600 */
-        }
-        .btn-secondary {
-            background-color: #6B7280; /* bg-gray-500 */
-            color: white;
-        }
-        .btn-secondary:hover {
-            background-color: #4B5563; /* bg-gray-600 */
-        }
-        .btn-danger-small {
-            background-color: #FEE2E2; /* bg-red-100 */
-            color: #EF4444; /* text-red-500 */
-            padding: 0.25rem 0.5rem; /* smaller padding */
-            font-size: 0.875rem; /* smaller text */
-        }
-        .btn-danger-small:hover {
-            background-color: #FECACA; /* bg-red-200 */
-        }
-        .table th, .table td {
-            padding: 0.75rem;
-            text-align: left;
-            border-bottom: 1px solid #E5E7EB; /* border-gray-200 */
-            vertical-align: top;
-        }
-        .table th {
-            background-color: #F3F4F6; /* bg-gray-100 */
-        }
-        .articles-list .article-entry {
-            display: flex;
-            align-items: center;
-            gap: 0.5rem; /* space-x-2 */
-            margin-bottom: 0.5rem; /* mb-2 */
-        }
-        .articles-list .article-entry select,
-        .articles-list .article-entry input[type="text"] {
-            flex-grow: 1;
-        }
-        .message-box {
-            position: fixed;
-            top: 20px;
-            left: 50%;
-            transform: translateX(-50%);
-            background-color: #10B981; /* bg-green-500 */
-            color: white;
-            padding: 1rem 1.5rem;
-            border-radius: 0.375rem; /* rounded-md */
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-            z-index: 1000;
-            opacity: 0;
-            transition: opacity 0.5s ease-in-out;
-            display: none;
-        }
-        .message-box.show {
+        label {
             display: block;
-            opacity: 1;
+            margin-bottom: 5px;
+            font-weight: bold;
         }
-        .names-list .name-entry {
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-            margin-bottom: 0.5rem;
+        input[type="text"], input[type="date"], textarea, select {
+            width: calc(100% - 22px); /* Adjust for padding and border */
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box; /* Include padding and border in the element's total width and height */
+            margin-top: 5px;
         }
-        .names-list .name-entry input,
-        .names-list .name-entry select {
-            flex-grow: 1;
+        textarea {
+            resize: vertical;
         }
-        .hidden {
-            display: none;
+        button {
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px 15px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        .message {
+            margin-top: 15px;
+            padding: 10px;
+            border-radius: 4px;
+            display: none; /* Hidden by default */
+        }
+        .message.success {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .message.error {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
         }
 
-        /* Styles pour la modale du calendrier */
-        .modal {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(0, 0, 0, 0.7);
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            z-index: 2000;
-            opacity: 0;
-            visibility: hidden;
-            transition: opacity 0.3s ease-in-out, visibility 0.3s ease-in-out;
+        /* Styles for the reservations list */
+        #reservationsList {
+            margin-top: 30px;
+            border-top: 1px solid #eee;
+            padding-top: 20px;
         }
-        .modal.open {
-            opacity: 1;
-            visibility: visible;
+        .reservation-item {
+            border: 1px solid #ccc;
+            padding: 15px;
+            margin-bottom: 15px;
+            border-radius: 5px;
+            background-color: #f9f9f9;
         }
-        .modal-content {
-            background-color: white;
-            padding: 2rem;
-            border-radius: 0.5rem;
-            max-width: 90%;
-            width: 900px; /* Largeur fixe pour le calendrier */
-            max-height: 90%;
-            overflow: auto;
-            position: relative;
-            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+        .reservation-item h4 {
+            margin-top: 0;
+            color: #0056b3;
         }
-        .modal-close-btn {
-            position: absolute;
-            top: 1rem;
-            right: 1rem;
-            background: none;
-            border: none;
-            font-size: 1.5rem;
-            cursor: pointer;
-            color: #4B5563;
+        .reservation-item p {
+            margin: 5px 0;
+        }
+        .reservation-item strong {
+            color: #555;
+        }
+        .article-list {
+            list-style-type: disc;
+            padding-left: 20px;
         }
     </style>
-
-    <script src='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.js'></script>
-    <script src='https://cdn.jsdelivr.net/npm/@fullcalendar/core@6.1.11/locales/fr.global.min.js'></script>
 </head>
-<body class="bg-gray-100 p-4">
+<body>
+    <div class="container">
+        <h2>Créer une Nouvelle Réservation</h2>
+        <div class="message" id="responseMessage"></div>
 
-    <div class="table-container">
-        <h1 class="text-2xl font-semibold mb-6 text-center text-gray-700">Tableau Interactif de Réservation (Multi-Articles)</h1>
-        
-        <div class="flex gap-4 mb-4">
-            <button id="add-reservation-btn" class="btn btn-primary">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5 inline-block mr-1">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-                </svg>
-                Ajouter une réservation
-            </button>
-            <button id="showCalendarBtn" class="btn btn-secondary">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5 inline-block mr-1">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 0 1 2.25-2.25h13.5A2.25 2.25 0 0 1 21 7.5v11.25m-18 0A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75m-18 0v-7.5m15 7.5v-7.5" />
-                </svg>
-                Voir sur le calendrier
-            </button>
-        </div>
+        <form id="reservationForm">
+            <div class="form-group">
+                <label for="names">Noms (séparés par des virgules) :</label>
+                <input type="text" id="names" placeholder="Ex: Jean Dupont, Marie Curie" required>
+            </div>
+            <div class="form-group">
+                <label for="startDate">Date de départ :</label>
+                <input type="date" id="startDate" required>
+            </div>
+            <div class="form-group">
+                <label for="endDate">Date de retour :</label>
+                <input type="date" id="endDate" required>
+            </div>
+            <div class="form-group">
+                <label for="articles">Articles réservés (un par ligne) :</label>
+                <textarea id="articles" rows="5" placeholder="Ex: Tente 2 places&#10;Sac de couchage&#10;Réchaud"></textarea>
+            </div>
+            <button type="submit">Enregistrer la Réservation</button>
+        </form>
 
-        <table class="min-w-full bg-white rounded-lg shadow overflow-hidden table">
-            <thead>
-                <tr>
-                    <th class="w-[20%]">Nom(s)</th>
-                    <th class="w-[15%]">Date Départ</th>
-                    <th class="w-[15%]">Date Retour</th>
-                    <th class="w-[40%]">Articles</th>
-                    <th class="w-[10%]">Action</th>
-                </tr>
-            </thead>
-            <tbody id="tableBody">
-            </tbody>
-        </table>
-    </div>
+        <hr>
 
-    <div id="messageBox" class="message-box">Message</div>
-
-    <div id="calendarModal" class="modal">
-        <div class="modal-content">
-            <button class="modal-close-btn" id="closeCalendarModal">&times;</button>
-            <h2 class="text-xl font-semibold mb-4">Calendrier des Réservations</h2>
-            <div id='calendar'></div>
+        <h2>Réservations Actuelles</h2>
+        <div id="reservationsList">
+            <p id="noReservationsMessage">Aucune réservation chargée pour le moment.</p>
         </div>
     </div>
 
     <script>
-        // --- Configuration de l'API ---
-        // !!! REMPLACEZ CETTE URL PAR VOTRE PROPRE URL DE DÉPLOIEMENT GOOGLE APPS SCRIPT !!!
-        const GOOGLE_APPS_SCRIPT_API_URL = 'https://script.google.com/macros/s/AKfycbxeYItICJG8R31TnsgMTlhoed9bhp5lnaa-9cqAH933deMxb1NlhBE_fsNaCMfp4pu8/exec';
+        // Variables globales pour stocker les réservations après le chargement
+        let currentReservations = [];
 
-        // Données initiales (seront remplacées par les données de l'API)
-        let data = {}; // Articles par catégorie
-        let existingNames = []; // Noms
-        let currentReservations = []; // Stocke les réservations actuellement affichées et synchronisées
+        document.addEventListener('DOMContentLoaded', (event) => {
+            loadReservations(); // Charger les réservations au chargement de la page
+        });
 
-        const tableBody = document.getElementById('tableBody');
-        const addReservationButton = document.getElementById('add-reservation-btn'); // ID corrigé ici
-        const messageBox = document.getElementById('messageBox');
-        const showCalendarBtn = document.getElementById('showCalendarBtn');
-        const calendarModal = document.getElementById('calendarModal');
-        const closeCalendarModalBtn = document.getElementById('closeCalendarModal');
-        const calendarEl = document.getElementById('calendar');
-
-        let reservationCounter = 0; // Maintenir un compteur global pour les IDs de ligne
-        let calendar; // Variable pour stocker l'instance du calendrier
-
-        // --- Fonctions d'interaction avec l'API Google Apps Script ---
-
-        /**
-         * Envoie une requête GET à l'API.
-         * @param {string} action - L'action à effectuer (ex: 'getReservations').
-         * @returns {Promise<Object>} La réponse JSON de l'API.
-         */
-        async function fetchApiData(action) {
-            try {
-                const response = await fetch(`${GOOGLE_APPS_SCRIPT_API_URL}?action=${action}`);
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
-                const result = await response.json();
-                if (result.status !== 200) {
-                    throw new Error(`API error: ${result.message || 'Unknown error'} - Data: ${JSON.stringify(result.data)}`);
-                }
-                return result.data;
-            } catch (error) {
-                console.error(`Error fetching data for ${action}:`, error);
-                showMessage(`Erreur lors du chargement des données: ${error.message}`, 4000);
-                return null;
-            }
-        }
-
-        /**
-         * Envoie une requête POST à l'API.
-         * @param {string} action - L'action à effectuer (ex: 'saveReservations').
-         * @param {Object} payload - Les données à envoyer.
-         * @returns {Promise<Object>} La réponse JSON de l'API.
-         */
-        async function postApiData(action, payload) {
-            try {
-                const response = await fetch(`${GOOGLE_APPS_SCRIPT_API_URL}?action=${action}`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'text/plain;charset=utf-8', // Google Apps Script attend text/plain
-                    },
-                    body: JSON.stringify(payload),
-                });
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
-                const result = await response.json();
-                if (result.status !== 200) {
-                    throw new Error(`API error: ${result.message || 'Unknown error'} - Data: ${JSON.stringify(result.data)}`);
-                }
-                return result.data;
-            } catch (error) {
-                console.error(`Error saving data for ${action}:`, error);
-                showMessage(`Erreur lors de la sauvegarde: ${error.message}`, 4000);
-                return null;
-            }
-        }
-
-        // Fonction pour afficher un message temporaire
-        function showMessage(text, duration = 3000) {
-            messageBox.textContent = text;
-            messageBox.classList.add('show');
+        // Fonction pour afficher des messages (succès/erreur)
+        function showMessage(msg, type = 'success', duration = 3000) {
+            const messageDiv = document.getElementById('responseMessage');
+            messageDiv.textContent = msg;
+            messageDiv.className = `message ${type}`;
+            messageDiv.style.display = 'block';
             setTimeout(() => {
-                messageBox.classList.remove('show');
+                messageDiv.style.display = 'none';
             }, duration);
         }
 
-        // Fonction pour mettre à jour le menu déroulant des articles
-        function updateItemSelect(categorySelectElement, itemSelectElement, newItemInput) {
-            const selectedCategory = categorySelectElement.value;
-            itemSelectElement.innerHTML = ''; // Vide les anciennes options
-            
-            const defaultItemOption = document.createElement('option');
-            defaultItemOption.value = "";
-            defaultItemOption.textContent = "-- Choisir article --";
-            itemSelectElement.appendChild(defaultItemOption);
+        // Fonction pour effacer le formulaire
+        function clearForm() {
+            document.getElementById('names').value = '';
+            document.getElementById('startDate').value = '';
+            document.getElementById('endDate').value = '';
+            document.getElementById('articles').value = '';
+        }
 
-            if (selectedCategory && data[selectedCategory]) {
-                itemSelectElement.disabled = false;
-                data[selectedCategory].forEach(item => {
-                    const option = document.createElement('option');
-                    option.value = item;
-                    option.textContent = item;
-                    itemSelectElement.appendChild(option);
-                });
-                // Add the "Other / New" option
-                const otherOption = document.createElement('option');
-                otherOption.value = "new-item";
-                otherOption.textContent = "Autre / Nouveau...";
-                itemSelectElement.appendChild(otherOption);
-            } else {
-                itemSelectElement.disabled = true;
+        // --- GESTION DE L'ENREGISTREMENT ---
+        document.getElementById('reservationForm').addEventListener('submit', function(e) {
+            e.preventDefault(); // Empêcher l'envoi du formulaire par défaut
+
+            const names = document.getElementById('names').value.split(',').map(name => name.trim()).filter(name => name !== '');
+            const startDate = document.getElementById('startDate').value; // Format YYYY-MM-DD
+            const endDate = document.getElementById('endDate').value;     // Format YYYY-MM-DD
+            const articles = document.getElementById('articles').value.split('\n').map(article => article.trim()).filter(article => article !== '');
+
+            if (names.length === 0 || !startDate || !endDate) {
+                showMessage('Veuillez remplir tous les champs obligatoires (Noms, Dates).', 'error');
+                return;
             }
 
-            // Hide the new item input initially
-            newItemInput.classList.add('hidden');
-            newItemInput.value = ''; // Clear its value
-        }
-
-        // Fonction pour mettre à jour TOUS les menus déroulants de noms
-        function updateAllNameSelects() {
-            document.querySelectorAll('.name-select').forEach(select => {
-                const newNameInput = select.nextElementSibling; // L'input de nouveau nom est le sibling suivant
-                const currentValue = select.value; // Garder la valeur actuelle sélectionnée
-
-                select.innerHTML = ''; // Vide les anciennes options
-                
-                const defaultNameOption = document.createElement('option');
-                defaultNameOption.value = "";
-                defaultNameOption.textContent = "-- Choisir un nom --";
-                select.appendChild(defaultNameOption);
-
-                existingNames.forEach(name => {
-                    const option = document.createElement('option');
-                    option.value = name;
-                    option.textContent = name;
-                    select.appendChild(option);
-                });
-
-                const newNameOption = document.createElement('option');
-                newNameOption.value = "new-name";
-                newNameOption.textContent = "Autre / Nouveau...";
-                select.appendChild(newNameOption);
-
-                // Tenter de restaurer la valeur sélectionnée
-                if (currentValue && (existingNames.includes(currentValue) || currentValue === "new-name")) {
-                    select.value = currentValue;
-                    // Si la valeur est "new-name" et que l'input était visible, le laisser visible
-                    if (currentValue === "new-name") {
-                        newNameInput.classList.remove('hidden');
-                    }
-                } else {
-                    select.value = ""; // Default if current value is invalid
-                    newNameInput.classList.add('hidden');
-                    newNameInput.value = '';
-                }
-            });
-        }
-
-
-        // Fonction pour ajouter un champ de nom à une réservation
-        async function addNameInputToReservation(namesListDiv, initialName = '') {
-            const nameEntryDiv = document.createElement('div');
-            nameEntryDiv.classList.add('name-entry');
-
-            const nameSelect = document.createElement('select');
-            nameSelect.classList.add('name-select', 'p-2', 'border', 'rounded-md');
-            nameSelect.addEventListener('change', async function() {
-                if (this.value === 'new-name') {
-                    newNameInput.classList.remove('hidden');
-                    newNameInput.focus();
-                } else {
-                    newNameInput.classList.add('hidden');
-                    newNameInput.value = '';
-                }
-                await saveReservations(); 
-            });
-
-            const newNameInput = document.createElement('input');
-            newNameInput.type = 'text';
-            newNameInput.placeholder = 'Nouveau nom';
-            newNameInput.classList.add('p-2', 'border', 'rounded-md', 'hidden');
-            newNameInput.addEventListener('blur', async function() {
-                if (this.value.trim() !== '') {
-                    if (!existingNames.includes(this.value.trim())) {
-                        existingNames.push(this.value.trim());
-                        existingNames.sort((a, b) => a.localeCompare(b));
-                        showMessage(`"${this.value.trim()}" ajouté aux noms existants.`, 2000);
-                    } else {
-                        showMessage(`"${this.value.trim()}" existe déjà.`, 2000);
-                    }
-                    updateAllNameSelects();
-                    nameSelect.value = this.value.trim();
-                    newNameInput.classList.add('hidden');
-                    newNameInput.value = '';
-                }
-                await saveReservations(); 
-            });
-
-
-            const removeNameBtn = document.createElement('button');
-            removeNameBtn.classList.add('btn', 'btn-danger-small');
-            removeNameBtn.innerHTML = `
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
-                </svg>`;
-            removeNameBtn.title = "Supprimer ce nom";
-            removeNameBtn.onclick = async function() {
-                nameEntryDiv.remove();
-                await saveReservations(); 
-                showMessage('Nom retiré.', 1500);
+            const reservationData = {
+                names: names,
+                startDate: startDate,
+                endDate: endDate,
+                articles: articles
             };
 
-            nameEntryDiv.appendChild(nameSelect);
-            nameEntryDiv.appendChild(newNameInput);
-            nameEntryDiv.appendChild(removeNameBtn);
-            namesListDiv.appendChild(nameEntryDiv);
+            // Appel de la fonction Apps Script côté serveur
+            google.script.run
+                .withSuccessHandler(onReservationSaved)
+                .withFailureHandler(onFailure)
+                .saveReservation(reservationData);
 
-            updateAllNameSelects(); 
-
-            // Set initial value if provided
-            if (initialName) {
-                if (existingNames.includes(initialName)) {
-                    nameSelect.value = initialName;
-                } else {
-                    nameSelect.value = "new-name";
-                    newNameInput.classList.remove('hidden');
-                    newNameInput.value = initialName;
-                }
-            } else {
-                nameSelect.value = ""; // Default to empty
-            }
-        }
-
-        // Fonction pour ajouter un article à une réservation existante
-        async function addArticleToReservation(articlesListDiv, initialCategory = '', initialItem = '') {
-            const articleEntryDiv = document.createElement('div');
-            articleEntryDiv.classList.add('article-entry');
-
-            const categorySelect = document.createElement('select');
-            categorySelect.classList.add('category-select-article', 'p-2', 'border', 'rounded-md');
-            categorySelect.addEventListener('change', async function() {
-                updateItemSelect(this, itemSelect, newItemInput);
-                await saveReservations(); 
-            });
-
-            const defaultCategoryOption = document.createElement('option');
-            defaultCategoryOption.value = "";
-            defaultCategoryOption.textContent = "-- Catégorie --";
-            categorySelect.appendChild(defaultCategoryOption);
-            for (const category in data) {
-                const option = document.createElement('option');
-                option.value = category;
-                option.textContent = category;
-                categorySelect.appendChild(option);
-            }
-
-            const itemSelect = document.createElement('select');
-            itemSelect.classList.add('item-select-article', 'p-2', 'border', 'rounded-md');
-            itemSelect.disabled = true;
-            itemSelect.addEventListener('change', async function() {
-                if (this.value === 'new-item') {
-                    newItemInput.classList.remove('hidden');
-                    newItemInput.focus();
-                } else {
-                    newItemInput.classList.add('hidden');
-                    newItemInput.value = '';
-                }
-                await saveReservations(); 
-            });
-
-            const defaultItemOption = document.createElement('option');
-            defaultItemOption.value = "";
-            defaultItemOption.textContent = "-- Article --";
-            itemSelect.appendChild(defaultItemOption);
-
-            const newItemInput = document.createElement('input');
-            newItemInput.type = 'text';
-            newItemInput.placeholder = 'Nom du nouvel article';
-            newItemInput.classList.add('p-2', 'border', 'rounded-md', 'hidden');
-
-            newItemInput.addEventListener('blur', async function() {
-                const selectedCategory = categorySelect.value;
-                if (this.value.trim() !== '' && selectedCategory) {
-                    if (!data[selectedCategory]) {
-                        data[selectedCategory] = [];
-                    }
-                    if (!data[selectedCategory].includes(this.value.trim())) {
-                        data[selectedCategory].push(this.value.trim());
-                        data[selectedCategory].sort((a, b) => a.localeCompare(b));
-                        showMessage(`"${this.value.trim()}" ajouté à la catégorie "${selectedCategory}".`, 2000);
-                    } else {
-                        showMessage(`"${this.value.trim()}" existe déjà dans cette catégorie.`, 2000);
-                    }
-                    
-                    document.querySelectorAll('.category-select-article').forEach(catSel => {
-                        if (catSel.value === selectedCategory) {
-                            const relatedItemSel = catSel.nextElementSibling;
-                            const relatedNewItemInp = relatedItemSel.nextElementSibling;
-                            updateItemSelect(catSel, relatedItemSel, relatedNewItemInp);
-                        }
-                    });
-                    itemSelect.value = this.value.trim();
-                    newItemInput.classList.add('hidden');
-                    newItemInput.value = '';
-                }
-                await saveReservations(); 
-            });
-
-
-            const removeArticleBtn = document.createElement('button');
-            removeArticleBtn.classList.add('btn', 'btn-danger-small');
-            removeArticleBtn.innerHTML = `
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
-                </svg>`;
-            removeArticleBtn.title = "Supprimer cet article";
-            removeArticleBtn.onclick = async function() {
-                articleEntryDiv.remove();
-                await saveReservations(); 
-                showMessage('Article retiré de la réservation.', 1500);
-            };
-
-            articleEntryDiv.appendChild(categorySelect);
-            articleEntryDiv.appendChild(itemSelect);
-            articleEntryDiv.appendChild(newItemInput);
-            articleEntryDiv.appendChild(removeArticleBtn);
-            articlesListDiv.appendChild(articleEntryDiv);
-
-            // Set initial values if provided
-            if (initialCategory) {
-                categorySelect.value = initialCategory;
-                updateItemSelect(categorySelect, itemSelect, newItemInput); // Populate items for the category
-                if (initialItem) {
-                    if (data[initialCategory] && data[initialCategory].includes(initialItem)) {
-                        itemSelect.value = initialItem;
-                    } else {
-                        itemSelect.value = "new-item";
-                        newItemInput.classList.remove('hidden');
-                        newItemInput.value = initialItem;
-                    }
-                }
-            }
-        }
-
-        // Fonction pour ajouter une nouvelle ligne de RESERVATION au tableau
-        async function addReservationRow(reservationData = null) { 
-            const newRow = tableBody.insertRow();
-            newRow.id = `reservation-${++reservationCounter}`;
-
-            // Cellule pour le Nom(s)
-            const nameCell = newRow.insertCell();
-            const namesListDiv = document.createElement('div');
-            namesListDiv.classList.add('names-list', 'mb-2');
-            nameCell.appendChild(namesListDiv);
-            
-            const addNameBtnInternal = document.createElement('button');
-            addNameBtnInternal.classList.add('btn', 'btn-secondary', 'text-sm', 'py-1', 'px-2', 'mb-2');
-            addNameBtnInternal.innerHTML = `
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4 inline-block mr-1">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v12m6-6H6" />
-                </svg>
-                Ajouter un nom`;
-            addNameBtnInternal.onclick = async function() {
-                await addNameInputToReservation(namesListDiv); 
-                await saveReservations(); 
-            };
-            nameCell.appendChild(addNameBtnInternal);
-
-            // Add names from reservationData if provided
-            if (reservationData && reservationData.names && reservationData.names.length > 0) {
-                for (const name of reservationData.names) {
-                    await addNameInputToReservation(namesListDiv, name);
-                }
-            } else {
-                await addNameInputToReservation(namesListDiv); // Add one empty name input by default
-            }
-
-
-            // Cellule pour la date de départ
-            const startDateCell = newRow.insertCell();
-            const startDateInput = document.createElement('input');
-            startDateInput.type = 'date';
-            startDateInput.classList.add('start-date-input', 'p-2', 'border', 'rounded-md');
-            startDateInput.addEventListener('change', async () => { 
-                await saveReservations(); 
-                updateCalendarEvents(); // Update calendar when date changes
-            }); 
-            startDateCell.appendChild(startDateInput);
-            if (reservationData && reservationData.startDate) {
-                startDateInput.value = reservationData.startDate;
-            }
-
-            // Cellule pour la date de retour
-            const endDateCell = newRow.insertCell();
-            const endDateInput = document.createElement('input');
-            endDateInput.type = 'date';
-            endDateInput.classList.add('end-date-input', 'p-2', 'border', 'rounded-md');
-            endDateInput.addEventListener('change', async () => { 
-                await saveReservations(); 
-                updateCalendarEvents(); // Update calendar when date changes
-            }); 
-            endDateCell.appendChild(endDateInput);
-            if (reservationData && reservationData.endDate) {
-                endDateInput.value = reservationData.endDate;
-            }
-            
-            // Cellule pour les articles
-            const articlesCell = newRow.insertCell();
-            const articlesListDiv = document.createElement('div');
-            articlesListDiv.classList.add('articles-list', 'mb-2');
-            articlesCell.appendChild(articlesListDiv);
-
-            const addArticleBtnInternal = document.createElement('button');
-            addArticleBtnInternal.classList.add('btn', 'btn-secondary', 'text-sm', 'py-1', 'px-2');
-            addArticleBtnInternal.innerHTML = `
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4 inline-block mr-1">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v12m6-6H6" />
-                </svg>
-                Ajouter un article`;
-            addArticleBtnInternal.onclick = async function() {
-                await addArticleToReservation(articlesListDiv); 
-                await saveReservations(); 
-            };
-            articlesCell.appendChild(addArticleBtnInternal);
-
-            // Add articles from reservationData if provided
-            if (reservationData && reservationData.articles && reservationData.articles.length > 0) {
-                for (const article of reservationData.articles) {
-                    await addArticleToReservation(articlesListDiv, article.category, article.name);
-                }
-            } else {
-                await addArticleToReservation(articlesListDiv); // Add one empty article input by default
-            }
-
-
-            // Cellule pour le bouton de suppression de la RESERVATION
-            const actionCell = newRow.insertCell();
-            const deleteReservationBtn = document.createElement('button');
-            deleteReservationBtn.classList.add('p-2', 'rounded-md', 'hover:bg-red-100', 'block', 'mx-auto');
-            deleteReservationBtn.innerHTML = `
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6 text-red-500 hover:text-red-700">
-                <path stroke-linecap="round" stroke-linejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12.56 0c.342.052.682.107 1.022.166m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" />
-                </svg>
-            `;
-            deleteReservationBtn.title = "Supprimer cette réservation";
-            deleteReservationBtn.onclick = async () => { 
-                newRow.remove(); 
-                await saveReservations(); 
-                showMessage('Réservation supprimée.', 2000); 
-                updateCalendarEvents(); // Update calendar when a reservation is deleted
-            };
-            actionCell.appendChild(deleteReservationBtn);
-            
-            // Sauvegarder après l'ajout d'une nouvelle ligne si ce n'est pas un chargement initial
-            if (!reservationData) {
-                await saveReservations();
-            }
-        }
-
-        // Fonction pour sauvegarder les données du tableau via l'API
-        async function saveReservations() {
-            const reservations = [];
-            const rows = tableBody.rows;
-
-            for (let i = 0; i < rows.length; i++) {
-                const row = rows[i];
-                const reservation = {
-                    names: [],
-                    startDate: row.querySelector('.start-date-input').value,
-                    endDate: row.querySelector('.end-date-input').value,
-                    articles: []
-                };
-
-                // Collecter tous les noms
-                row.querySelectorAll('.name-entry').forEach(nameEntry => {
-                    const nameSelect = nameEntry.querySelector('.name-select');
-                    const newNameInput = nameEntry.querySelector('input[type="text"]');
-                    if (nameSelect && nameSelect.value && nameSelect.value !== '' && nameSelect.value !== 'new-name') {
-                        reservation.names.push(nameSelect.value);
-                    } else if (newNameInput && newNameInput.value.trim() !== '') {
-                        if (!reservation.names.includes(newNameInput.value.trim())) { 
-                           reservation.names.push(newNameInput.value.trim());
-                        }
-                    }
-                });
-
-                // Collecter tous les articles
-                row.querySelectorAll('.article-entry').forEach(articleEntry => {
-                    const categorySelect = articleEntry.querySelector('.category-select-article');
-                    const itemSelect = articleEntry.querySelector('.item-select-article');
-                    const newItemInput = articleEntry.querySelector('input[type="text"]');
-
-                    let articleCategory = categorySelect ? categorySelect.value : '';
-                    let articleName = '';
-
-                    if (itemSelect && itemSelect.value && itemSelect.value !== '' && itemSelect.value !== 'new-item') {
-                        articleName = itemSelect.value;
-                    } else if (newItemInput && newItemInput.value.trim() !== '') {
-                        articleName = newItemInput.value.trim();
-                    }
-
-                    if (articleCategory && articleName) {
-                        reservation.articles.push({ category: articleCategory, name: articleName });
-                    }
-                });
-                reservations.push(reservation);
-            }
-            
-            currentReservations = reservations; // Update local copy of reservations
-            updateCalendarEvents(); // Update calendar after saving reservations
-
-            const results = await Promise.all([
-                postApiData('saveReservations', reservations),
-                postApiData('saveNames', existingNames),
-                postApiData('saveArticles', data)
-            ]);
-
-            const allSucceeded = results.every(res => res !== null);
-            if (allSucceeded) {
-                showMessage('Réservations et listes sauvegardées en ligne.', 1500);
-            } else {
-                showMessage('Certaines données n\'ont pas pu être sauvegardées.', 3000);
-            }
-        }
-
-        // Fonction pour charger les données depuis l'API et reconstruire le tableau
-        async function loadReservations() {
-            showMessage('Chargement des données...', 1000);
-            
-            const [loadedNamesData, loadedArticlesData, loadedReservationsData] = await Promise.all([
-                fetchApiData('getNames'),
-                fetchApiData('getArticles'),
-                fetchApiData('getReservations')
-            ]);
-
-            if (loadedNamesData && Array.isArray(loadedNamesData.names)) {
-                existingNames = loadedNamesData.names;
-                existingNames.sort((a, b) => a.localeCompare(b));
-            } else {
-                existingNames = []; 
-            }
-
-            if (loadedArticlesData && typeof loadedArticlesData.articles === 'object' && loadedArticlesData.articles !== null) {
-                data = loadedArticlesData.articles;
-                for (const category in data) {
-                    if (Array.isArray(data[category])) {
-                        data[category].sort((a, b) => a.localeCompare(b));
-                    }
-                }
-            } else {
-                data = {}; 
-            }
-
-            tableBody.innerHTML = ''; 
-            reservationCounter = 0; 
-            currentReservations = []; // Clear current reservations before loading new ones
-
-            if (loadedReservationsData && Array.isArray(loadedReservationsData.reservations) && loadedReservationsData.reservations.length > 0) {
-                for (const reservation of loadedReservationsData.reservations) {
-                    await addReservationRow(reservation); // Pass loaded data to create rows
-                }
-                currentReservations = loadedReservationsData.reservations; // Update local copy
-                showMessage('Réservations chargées.', 1500);
-            } else {
-                showMessage('Aucune réservation trouvée. Ajoutez-en une nouvelle !', 2000);
-            }
-        }
-
-        // --- Fonctions du Calendrier ---
-
-        function initializeCalendar() {
-            if (calendar) {
-                calendar.destroy(); // Destroy existing calendar instance if it exists
-            }
-            calendar = new FullCalendar.Calendar(calendarEl, {
-                initialView: 'dayGridMonth',
-                locale: 'fr',
-                headerToolbar: {
-                    left: 'prev,next today',
-                    center: 'title',
-                    right: 'dayGridMonth,timeGridWeek,timeGridDay'
-                },
-                events: [], // Start with no events, will be populated by updateCalendarEvents
-                eventDidMount: function(info) {
-                    info.el.title = info.event.extendedProps.details; // Add full details as tooltip
-                },
-                eventClick: function(info) {
-                    // Optionnel: Afficher plus de détails ou ouvrir la modale d'édition
-                    alert(`Réservation: ${info.event.title}\nDu: ${info.event.start.toLocaleDateString('fr-FR')}\nAu: ${info.event.end ? info.event.end.toLocaleDateString('fr-FR') : 'N/A'}\nDétails: ${info.event.extendedProps.details}`);
-                }
-            });
-            calendar.render();
-        }
-
-        function updateCalendarEvents() {
-            if (!calendar) return; // Ensure calendar is initialized
-
-            const events = [];
-            currentReservations.forEach((reservation, index) => {
-                const names = reservation.names.join(', ') || 'N/A';
-                const articles = reservation.articles.map(a => `${a.category}: ${a.name}`).join('; ') || 'N/A';
-                
-                // FullCalendar inclut la date de fin mais exclut le jour de fin dans la vue "jour".
-                // Pour couvrir le jour de fin, il faut ajouter un jour.
-                // Cependant, pour les dates affichées dans les champs input type="date", on veut la date exacte.
-                // Ici, on formatte pour FullCalendar.
-                let endDateForCalendar = reservation.endDate;
-                if (endDateForCalendar) {
-                    const end = new Date(endDateForCalendar);
-                    end.setDate(end.getDate() + 1); // Add one day for FullCalendar's exclusive end date
-                    endDateForCalendar = end.toISOString().split('T')[0];
-                }
-
-                if (reservation.startDate && reservation.endDate) {
-                    events.push({
-                        id: `res-${index}`, // Unique ID for the event
-                        title: `${names} - ${reservation.articles.length} article(s)`,
-                        start: reservation.startDate,
-                        end: endDateForCalendar, // Corrected end date for FullCalendar
-                        extendedProps: {
-                            details: `Noms: ${names}\nArticles: ${articles}\nDu: ${reservation.startDate}\nAu: ${reservation.endDate}`
-                        },
-                        allDay: true // Treat as all-day events
-                    });
-                }
-            });
-
-            calendar.setOption('events', events); // Replace all events in the calendar
-        }
-
-        // --- Initialisation au chargement de la page ---
-        document.addEventListener('DOMContentLoaded', async () => {
-            initializeCalendar(); // Initialise le calendrier en premier
-            await loadReservations(); // Charge les réservations et met à jour le tableau
-            updateCalendarEvents(); // Met à jour les événements du calendrier après le chargement des réservations
-
-            addReservationButton.addEventListener('click', addReservationRow); // Bouton "Ajouter une Réservation"
-            showCalendarBtn.addEventListener('click', () => {
-                calendarModal.classList.add('open');
-                calendar.render(); // Re-render the calendar to ensure it displays correctly after modal is visible
-                calendar.updateSize(); // Adjust calendar size after modal is open
-            });
-            closeCalendarModalBtn.addEventListener('click', () => {
-                calendarModal.classList.remove('open');
-            });
+            showMessage('Enregistrement en cours...', 'info');
         });
-    </script>
 
+        function onReservationSaved(response) {
+            if (response.status === 200) {
+                showMessage('Réservation enregistrée avec succès !', 'success');
+                clearForm();
+                // Recharger les réservations après l'enregistrement d'une nouvelle
+                loadReservations();
+            } else {
+                showMessage('Erreur lors de l\'enregistrement: ' + response.message, 'error');
+            }
+        }
+
+        // --- GESTION DU CHARGEMENT DES RÉSERVATIONS ---
+        async function loadReservations() {
+            showMessage('Chargement des réservations...', 'info');
+            google.script.run
+                .withSuccessHandler(onReservationsLoaded)
+                .withFailureHandler(onFailure)
+                .getReservations();
+        }
+
+        async function onReservationsLoaded(response) {
+            const reservationsListDiv = document.getElementById('reservationsList');
+            reservationsListDiv.innerHTML = ''; // Nettoyer la liste avant de recharger
+
+            if (response.status === 200 && response.data && Array.isArray(response.data.reservations) && response.data.reservations.length > 0) {
+                document.getElementById('noReservationsMessage').style.display = 'none';
+                currentReservations = response.data.reservations; // Mettre à jour la variable globale
+
+                for (const reservation of currentReservations) {
+                    await addReservationRow(reservation); // Utilisez await ici si addReservationRow devient async
+                }
+                showMessage('Réservations chargées.', 'success');
+            } else {
+                document.getElementById('noReservationsMessage').style.display = 'block';
+                showMessage('Aucune réservation trouvée ou erreur lors du chargement.', 'error');
+                currentReservations = []; // Réinitialiser si rien n'est trouvé
+            }
+        }
+
+        // Fonction pour ajouter une ligne de réservation au DOM
+        function addReservationRow(reservationData) {
+            const reservationsListDiv = document.getElementById('reservationsList');
+            const noReservationsMessage = document.getElementById('noReservationsMessage');
+            if (noReservationsMessage) noReservationsMessage.style.display = 'none';
+
+
+            const reservationItem = document.createElement('div');
+            reservationItem.className = 'reservation-item';
+
+            const namesHtml = reservationData.names && reservationData.names.length > 0 ?
+                              `<h4>Réservataire(s): ${reservationData.names.join(', ')}</h4>` :
+                              '<h4>Réservataire(s) non spécifié</h4>';
+
+            const startDate = reservationData.startDate ? new Date(reservationData.startDate).toLocaleDateString('fr-FR') : 'Non spécifiée';
+            const endDate = reservationData.endDate ? new Date(reservationData.endDate).toLocaleDateString('fr-FR') : 'Non spécifiée';
+
+            let articlesHtml = '<p><strong>Articles:</strong></p>';
+            if (reservationData.articles && reservationData.articles.length > 0) {
+                articlesHtml += '<ul class="article-list">';
+                reservationData.articles.forEach(article => {
+                    articlesHtml += `<li>${article}</li>`;
+                });
+                articlesHtml += '</ul>';
+            } else {
+                articlesHtml += '<p>Aucun article.</p>';
+            }
+
+            reservationItem.innerHTML = `
+                ${namesHtml}
+                <p><strong>Départ:</strong> ${startDate}</p>
+                <p><strong>Retour:</strong> ${endDate}</p>
+                ${articlesHtml}
+            `;
+            reservationsListDiv.appendChild(reservationItem);
+        }
+
+
+        // --- GESTION DES ERREURS GLOBALES ---
+        function onFailure(error) {
+            console.error('Erreur Apps Script:', error);
+            showMessage('Une erreur s\'est produite : ' + error.message, 'error');
+        }
+    </script>
 </body>
 </html>
