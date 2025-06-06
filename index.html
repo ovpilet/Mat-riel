@@ -202,7 +202,7 @@
         // --- Configuration de l'API ---
         // !!! L'URL de déploiement n'est plus nécessaire ici pour les appels google.script.run !!!
         // Elle serait nécessaire si vous faisiez un déploiement "Web App" avec une URL `/exec` pour des appels fetch/HTTP classiques.
-
+        const GOOGLE_APPS_SCRIPT_API_URL = 'https://script.google.com/macros/s/AKfycbxeYItICJG8R31TnsgMTlhoed9bhp5lnaa-9cqAH933deMxb1NlhBE_fsNaCMfp4pu8/exec';
         // Données initiales (seront remplacées par les données de l'API)
         let categoriesAndItems = {}; // Articles
         let existingNames = []; // Noms
