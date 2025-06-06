@@ -6,297 +6,656 @@
     <title>Tableau de Réservation Persistant & Calendrier</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        /* ... (votre CSS existant) ... */
+        /* VOTRE CSS EXISTANT ICI */
+        /*
+        Exemple de CSS pour les classes utilisées si non déjà définies :
+        .btn {
+            @apply px-4 py-2 rounded-md font-semibold;
+        }
+        .btn-primary {
+            @apply bg-blue-500 text-white hover:bg-blue-600;
+        }
+        .btn-secondary {
+            @apply bg-gray-200 text-gray-800 hover:bg-gray-300;
+        }
+        .btn-danger {
+            @apply bg-red-500 text-white hover:bg-red-600;
+        }
+        .btn-danger-small {
+            @apply text-red-500 hover:text-red-700 p-1 rounded-full;
+        }
+        #message-box {
+            @apply fixed bottom-4 right-4 bg-green-500 text-white px-4 py-2 rounded-lg shadow-md;
+            z-index: 1000;
+        }
+        */
     </style>
     <script src='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.js'></script>
     <script src='https://cdn.jsdelivr.net/npm/@fullcalendar/core@6.1.11/locales/fr.global.min.js'></script>
 </head>
-<body>
+<body class="bg-gray-100 p-4">
+
     <div id="app-container" class="container mx-auto p-4 bg-white shadow-lg rounded-lg">
+        <h1 class="text-3xl font-bold mb-6 text-gray-800">Gestion des Réservations et Matériel</h1>
+
+        <button id="add-reservation-btn" class="btn btn-primary mb-6">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5 inline-block mr-2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v12m6-6H6" />
+            </svg>
+            Ajouter une Réservation
+        </button>
+
+        <div id="reservation-table-container" class="overflow-x-auto mb-8">
+            <table class="min-w-full bg-white border border-gray-200">
+                <thead>
+                    <tr class="bg-gray-100 text-gray-600 uppercase text-sm leading-normal">
+                        <th class="py-3 px-6 text-left">Noms</th>
+                        <th class="py-3 px-6 text-left">Date Départ</th>
+                        <th class="py-3 px-6 text-left">Date Retour</th>
+                        <th class="py-3 px-6 text-left">Articles</th>
+                        <th class="py-3 px-6 text-center">Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="reservation-table-body" class="text-gray-600 text-sm font-light">
+                    </tbody>
+            </table>
         </div>
+
+        <h2 class="text-2xl font-bold mb-4 text-gray-800">Calendrier des Réservations</h2>
+        <div id="calendar" class="bg-gray-50 p-4 rounded-lg shadow-md"></div>
+    </div>
+
+    <div id="message-box" class="hidden"></div>
+
     <script>
         // --- Configuration de l'API ---
         // !!! REMPLACEZ CETTE URL PAR VOTRE PROPRE URL DE DÉPLOIEMENT GOOGLE APPS SCRIPT !!!
         const GOOGLE_APPS_SCRIPT_API_URL = 'https://script.google.com/macros/s/AKfycbxeYItICJG8R31TnsgMTlhoed9bhp5lnaa-9cqAH933deMxb1NlhBE_fsNaCMfp4pu8/exec'; // VÉRIFIEZ QUE C'EST LA BONNE URL
 
-        // ... (le reste de vos variables globales) ...
+        // --- Variables globales ---
+        let existingNames = []; // Pour stocker les noms existants
+        let data = {}; // Pour stocker les catégories et articles
+        let reservationCounter = 0; // Compteur pour les ID de réservation
+        let calendar; // Instance du calendrier FullCalendar
+        const messageBox = document.getElementById('message-box');
+        const tableBody = document.getElementById('reservation-table-body');
+        const addReservationButton = document.getElementById('add-reservation-btn');
 
-        async function loadReservations() {
-            showMessage('Chargement des données...', 1000);
-            
-            const [loadedNamesData, loadedArticlesData, loadedReservationsData] = await Promise.all([
-                fetchApiData('getNames'),
-                fetchApiData('getArticles'),
-                fetchApiData('getReservations')
-            ]);
+        // --- Fonctions utilitaires ---
 
-            // --- NOUVEAUX LOGS ICI ---
-            console.log('--- Debugging loadReservations ---');
-            console.log('API Response - loadedReservationsData:', loadedReservationsData);
-            console.log('API Response - loadedNamesData:', loadedNamesData);
-            console.log('API Response - loadedArticlesData:', loadedArticlesData);
-            // --- FIN DES NOUVEAUX LOGS ---
+        // Fonction pour afficher des messages temporaires à l'utilisateur
+        function showMessage(message, duration = 3000) {
+            messageBox.textContent = message;
+            messageBox.classList.remove('hidden', 'bg-red-500', 'bg-green-500'); // Réinitialise les classes
+            messageBox.classList.add('bg-green-500'); // Par défaut, succès
 
-            if (loadedNamesData && Array.isArray(loadedNamesData.names)) {
-                existingNames = loadedNamesData.names;
-                existingNames.sort((a, b) => a.localeCompare(b));
-            } else {
-                existingNames = []; 
+            // Vous pouvez ajouter une logique pour les messages d'erreur
+            if (message.includes('erreur') || message.includes('échec')) {
+                messageBox.classList.remove('bg-green-500');
+                messageBox.classList.add('bg-red-500');
             }
 
-            if (loadedArticlesData && typeof loadedArticlesData.articles === 'object' && loadedArticlesData.articles !== null) {
-                data = loadedArticlesData.articles;
-                for (const category in data) {
-                    if (Array.isArray(data[category])) {
-                        data[category].sort((a, b) => a.localeCompare(b));
-                    }
-                }
-            } else {
-                data = {}; 
-            }
+            setTimeout(() => {
+                messageBox.classList.add('hidden');
+            }, duration);
+        }
 
-            tableBody.innerHTML = ''; 
-            reservationCounter = 0; 
+        // Fonction pour mettre à jour les sélecteurs de noms sur toutes les lignes
+        function updateAllNameSelects() {
+            document.querySelectorAll('.name-select').forEach(selectElement => {
+                const currentValue = selectElement.value; // Conserver la valeur actuelle
+                selectElement.innerHTML = ''; // Vider les options
+                
+                const defaultOption = document.createElement('option');
+                defaultOption.value = "";
+                defaultOption.textContent = "-- Choisir un nom --";
+                selectElement.appendChild(defaultOption);
 
-            if (loadedReservationsData && Array.isArray(loadedReservationsData.reservations) && loadedReservationsData.reservations.length > 0) {
-                loadedReservationsData.reservations.forEach(async res => {
-                    // ... (tout le code de construction de la ligne de réservation) ...
-                    
-                    // --- NOUVEAUX LOGS DANS LA BOUCLE ---
-                    console.log(`Processing reservation:`, res);
-                    console.log(`Dates for this reservation: StartDate = ${res.startDate}, EndDate = ${res.endDate}`);
-                    // --- FIN DES NOUVEAUX LOGS DANS LA BOUCLE ---
-
-                    const newRow = tableBody.insertRow();
-                    newRow.id = `reservation-${++reservationCounter}`;
-
-                    // Cellule pour le Nom(s)
-                    const nameCell = newRow.insertCell();
-                    const namesListDiv = document.createElement('div');
-                    namesListDiv.classList.add('names-list', 'mb-2');
-                    nameCell.appendChild(namesListDiv);
-                    
-                    const addNameBtnInternal = document.createElement('button');
-                    addNameBtnInternal.classList.add('btn', 'btn-secondary', 'text-sm', 'py-1', 'px-2', 'mb-2');
-                    addNameBtnInternal.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4 inline-block mr-1">
-                                                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v12m6-6H6" />
-                                                    </svg> Ajouter un nom`;
-                    addNameBtnInternal.onclick = async () => { 
-                        await addNameInputToReservation(namesListDiv); 
-                        await saveReservations(); 
-                    };
-                    nameCell.appendChild(addNameBtnInternal);
-
-                    if (res.names.length > 0) {
-                        for (const name of res.names) {
-                            const nameEntryDiv = document.createElement('div');
-                            nameEntryDiv.classList.add('name-entry');
-
-                            const nameSelect = document.createElement('select');
-                            nameSelect.classList.add('name-select', 'p-2', 'border', 'rounded-md');
-                            nameSelect.addEventListener('change', async () => { await saveReservations(); });
-
-                            const newNameInput = document.createElement('input');
-                            newNameInput.type = 'text';
-                            newNameInput.placeholder = 'Nouveau nom';
-                            newNameInput.classList.add('p-2', 'border', 'rounded-md', 'hidden');
-                            newNameInput.addEventListener('blur', async () => {
-                                if (newNameInput.value.trim() !== '') {
-                                    if (!existingNames.includes(newNameInput.value.trim())) {
-                                        existingNames.push(newNameInput.value.trim());
-                                        existingNames.sort((a, b) => a.localeCompare(b));
-                                    }
-                                    nameSelect.value = newNameInput.value.trim();
-                                    newNameInput.classList.add('hidden');
-                                    newNameInput.value = '';
-                                }
-                                updateAllNameSelects();
-                                await saveReservations(); 
-                            });
-                            
-                            const defaultNameOption = document.createElement('option');
-                            defaultNameOption.value = "";
-                            defaultNameOption.textContent = "-- Choisir un nom --";
-                            nameSelect.appendChild(defaultNameOption);
-                            existingNames.forEach(n => {
-                                const option = document.createElement('option');
-                                option.value = n;
-                                option.textContent = n;
-                                nameSelect.appendChild(option);
-                            });
-                            const newNameOption = document.createElement('option');
-                            newNameOption.value = "new-name";
-                            newNameOption.textContent = "Autre / Nouveau...";
-                            nameSelect.appendChild(newNameOption);
-
-
-                            if (existingNames.includes(name)) {
-                                nameSelect.value = name;
-                            } else {
-                                nameSelect.value = "new-name"; 
-                                newNameInput.classList.remove('hidden');
-                                newNameInput.value = name; 
-                            }
-
-                            const removeNameBtn = document.createElement('button');
-                            removeNameBtn.classList.add('btn', 'btn-danger-small');
-                            removeNameBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>`;
-                            removeNameBtn.title = "Supprimer ce nom";
-                            removeNameBtn.onclick = async () => { nameEntryDiv.remove(); await saveReservations(); showMessage('Nom retiré.', 1500); };
-                            
-                            nameEntryDiv.appendChild(nameSelect);
-                            nameEntryDiv.appendChild(newNameInput);
-                            nameEntryDiv.appendChild(removeNameBtn);
-                            namesListDiv.appendChild(nameEntryDiv);
-                        }
-                    } else {
-                        await addNameInputToReservation(namesListDiv); 
-                    }
-
-                    const startDateCell = newRow.insertCell();
-                    const startDateInput = document.createElement('input');
-                    startDateInput.type = 'date';
-                    startDateInput.value = res.startDate; // <-- C'est ici que la valeur est assignée
-                    startDateInput.classList.add('start-date-input', 'p-2', 'border', 'rounded-md');
-                    startDateInput.addEventListener('change', async () => { await saveReservations(); });
-                    startDateCell.appendChild(startDateInput);
-
-                    const endDateCell = newRow.insertCell();
-                    const endDateInput = document.createElement('input');
-                    endDateInput.type = 'date';
-                    endDateInput.value = res.endDate; // <-- Et ici
-                    endDateInput.classList.add('end-date-input', 'p-2', 'border', 'rounded-md');
-                    endDateInput.addEventListener('change', async () => { await saveReservations(); });
-                    endDateCell.appendChild(endDateInput);
-                    
-                    const articlesCell = newRow.insertCell();
-                    const articlesListDiv = document.createElement('div');
-                    articlesListDiv.classList.add('articles-list', 'mb-2');
-                    articlesCell.appendChild(articlesListDiv);
-
-                    const addArticleBtnInternal = document.createElement('button');
-                    addArticleBtnInternal.classList.add('btn', 'btn-secondary', 'text-sm', 'py-1', 'px-2');
-                    addArticleBtnInternal.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4 inline-block mr-1">
-                                                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v12m6-6H6" />
-                                                    </svg> Ajouter un article`;
-                    addArticleBtnInternal.onclick = async () => { 
-                        await addArticleToReservation(articlesListDiv); 
-                        await saveReservations(); 
-                    };
-                    articlesCell.appendChild(addArticleBtnInternal);
-
-                    if (res.articles.length > 0) {
-                        for (const article of res.articles) {
-                            const articleEntryDiv = document.createElement('div');
-                            articleEntryDiv.classList.add('article-entry');
-
-                            const categorySelect = document.createElement('select');
-                            categorySelect.classList.add('category-select-article', 'p-2', 'border', 'rounded-md');
-                            categorySelect.addEventListener('change', async () => {
-                                updateItemSelect(categorySelect, itemSelect, newItemInput);
-                                await saveReservations();
-                            });
-
-                            const defaultCategoryOption = document.createElement('option');
-                            defaultCategoryOption.value = "";
-                            defaultCategoryOption.textContent = "-- Catégorie --";
-                            categorySelect.appendChild(defaultCategoryOption);
-                            for (const cat in data) {
-                                const option = document.createElement('option');
-                                option.value = cat;
-                                option.textContent = cat;
-                                categorySelect.appendChild(option);
-                            }
-                            categorySelect.value = article.category;
-
-                            const itemSelect = document.createElement('select');
-                            itemSelect.classList.add('item-select-article', 'p-2', 'border', 'rounded-md');
-                            itemSelect.addEventListener('change', async () => {
-                                if (itemSelect.value === 'new-item') {
-                                    newItemInput.classList.remove('hidden');
-                                    newItemInput.focus();
-                                } else {
-                                    newItemInput.classList.add('hidden');
-                                    newItemInput.value = '';
-                                }
-                                await saveReservations();
-                            });
-                            
-                            const newItemInput = document.createElement('input');
-                            newItemInput.type = 'text';
-                            newItemInput.placeholder = 'Nom du nouvel article';
-                            newItemInput.classList.add('p-2', 'border', 'rounded-md', 'hidden');
-                            newItemInput.addEventListener('blur', async () => {
-                                const selectedCategory = categorySelect.value;
-                                if (newItemInput.value.trim() !== '' && selectedCategory) {
-                                    if (!data[selectedCategory]) {
-                                        data[selectedCategory] = [];
-                                    }
-                                    if (!data[selectedCategory].includes(newItemInput.value.trim())) {
-                                        data[selectedCategory].push(newItemInput.value.trim());
-                                        data[selectedCategory].sort((a, b) => a.localeCompare(b));
-                                        showMessage(`"${newItemInput.value.trim()}" ajouté à la catégorie "${selectedCategory}".`, 2000);
-                                    } else {
-                                        showMessage(`"${newItemInput.value.trim()}" existe déjà dans cette catégorie.`, 2000);
-                                    }
-                                    
-                                    document.querySelectorAll('.category-select-article').forEach(catSel => {
-                                        if (catSel.value === selectedCategory) {
-                                            const relatedItemSel = catSel.nextElementSibling;
-                                            const relatedNewItemInp = relatedItemSel.nextElementSibling;
-                                            updateItemSelect(catSel, relatedItemSel, relatedNewItemInp);
-                                        }
-                                    });
-                                    itemSelect.value = newItemInput.value.trim();
-                                    newItemInput.classList.add('hidden');
-                                    newItemInput.value = '';
-                                }
-                                await saveReservations();
-                            });
-
-                            updateItemSelect(categorySelect, itemSelect, newItemInput);
-
-                            if (data[article.category] && data[article.category].includes(article.name)) {
-                                itemSelect.value = article.name;
-                            } else {
-                                itemSelect.value = "new-item";
-                                newItemInput.classList.remove('hidden');
-                                newItemInput.value = article.name;
-                            }
-
-                            const removeArticleBtn = document.createElement('button');
-                            removeArticleBtn.classList.add('btn', 'btn-danger-small');
-                            removeArticleBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>`;
-                            removeArticleBtn.title = "Supprimer cet article";
-                            removeArticleBtn.onclick = async () => { articleEntryDiv.remove(); await saveReservations(); showMessage('Article retiré de la réservation.', 1500); };
-
-                            articleEntryDiv.appendChild(categorySelect);
-                            articleEntryDiv.appendChild(itemSelect);
-                            articleEntryDiv.appendChild(newItemInput);
-                            articleEntryDiv.appendChild(removeArticleBtn);
-                            articlesListDiv.appendChild(articleEntryDiv);
-                        }
-                    } else {
-                        await addArticleToReservation(articlesListDiv); 
-                    }
-
-                    const actionCell = newRow.insertCell();
-                    const deleteReservationBtn = document.createElement('button');
-                    deleteReservationBtn.classList.add('p-2', 'rounded-md', 'hover:bg-red-100', 'block', 'mx-auto');
-                    deleteReservationBtn.innerHTML = `
-                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6 text-red-500 hover:text-red-700">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12.56 0c.342.052.682.107 1.022.166m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" />
-                        </svg>
-                    `;
-                    deleteReservationBtn.title = "Supprimer cette réservation";
-                    deleteReservationBtn.onclick = async () => { newRow.remove(); await saveReservations(); showMessage('Réservation supprimée.', 2000); };
-                    actionCell.appendChild(deleteReservationBtn);
+                existingNames.forEach(name => {
+                    const option = document.createElement('option');
+                    option.value = name;
+                    option.textContent = name;
+                    selectElement.appendChild(option);
                 });
-            } else {
-                await addReservationRow(); 
+
+                const newNameOption = document.createElement('option');
+                newNameOption.value = "new-name";
+                newNameOption.textContent = "Autre / Nouveau...";
+                selectElement.appendChild(newNameOption);
+
+                // Restaurer la valeur ou gérer 'new-name'
+                if (existingNames.includes(currentValue)) {
+                    selectElement.value = currentValue;
+                } else if (currentValue === "new-name" || (currentValue !== "" && !existingNames.includes(currentValue))) {
+                    selectElement.value = "new-name";
+                    const newNameInput = selectElement.nextElementSibling; // L'input est juste après le select
+                    if (newNameInput && newNameInput.tagName === 'INPUT') {
+                        newNameInput.classList.remove('hidden');
+                    }
+                } else {
+                    selectElement.value = ""; // Si l'ancienne valeur n'existe plus ou était vide
+                }
+            });
+        }
+
+        // Fonction pour ajouter un champ de sélection de nom à une réservation
+        async function addNameInputToReservation(namesListDiv, initialName = "") {
+            const nameEntryDiv = document.createElement('div');
+            nameEntryDiv.classList.add('name-entry', 'mb-2'); // Ajoutez mb-2 pour l'espacement
+
+            const nameSelect = document.createElement('select');
+            nameSelect.classList.add('name-select', 'p-2', 'border', 'rounded-md', 'mr-2'); // Ajout de mr-2 pour l'espacement
+            nameSelect.addEventListener('change', async () => {
+                const newNameInput = nameSelect.nextElementSibling; // L'input est juste après le select
+                if (nameSelect.value === 'new-name') {
+                    newNameInput.classList.remove('hidden');
+                    newNameInput.focus();
+                } else {
+                    newNameInput.classList.add('hidden');
+                    newNameInput.value = '';
+                }
+                await saveReservations();
+            });
+
+            const newNameInput = document.createElement('input');
+            newNameInput.type = 'text';
+            newNameInput.placeholder = 'Nouveau nom';
+            newNameInput.classList.add('p-2', 'border', 'rounded-md', 'hidden', 'mr-2'); // Ajout de mr-2
+            newNameInput.addEventListener('blur', async () => { // Quand l'utilisateur quitte le champ
+                if (newNameInput.value.trim() !== '') {
+                    // Si le nouveau nom n'existe pas déjà, l'ajouter
+                    if (!existingNames.includes(newNameInput.value.trim())) {
+                        existingNames.push(newNameInput.value.trim());
+                        existingNames.sort((a, b) => a.localeCompare(b)); // Trier la liste
+                        showMessage(`"${newNameInput.value.trim()}" ajouté à la liste des noms.`, 2000);
+                    }
+                    // Sélectionner le nouveau nom dans le select et cacher l'input
+                    nameSelect.value = newNameInput.value.trim();
+                    newNameInput.classList.add('hidden');
+                    newNameInput.value = ''; // Vider l'input après utilisation
+                }
+                updateAllNameSelects(); // Mettre à jour tous les sélecteurs de noms
+                await saveReservations(); // Sauvegarder les réservations après modification du nom
+            });
+
+            const defaultOption = document.createElement('option');
+            defaultOption.value = "";
+            defaultOption.textContent = "-- Choisir un nom --";
+            nameSelect.appendChild(defaultOption);
+
+            existingNames.forEach(name => {
+                const option = document.createElement('option');
+                option.value = name;
+                option.textContent = name;
+                nameSelect.appendChild(option);
+            });
+
+            const newNameOption = document.createElement('option');
+            newNameOption.value = "new-name";
+            newNameOption.textContent = "Autre / Nouveau...";
+            nameSelect.appendChild(newNameOption);
+
+            // Gérer la valeur initiale si fournie
+            if (initialName) {
+                if (existingNames.includes(initialName)) {
+                    nameSelect.value = initialName;
+                } else {
+                    nameSelect.value = "new-name";
+                    newNameInput.classList.remove('hidden');
+                    newNameInput.value = initialName;
+                }
+            }
+
+            const removeNameBtn = document.createElement('button');
+            removeNameBtn.classList.add('btn', 'btn-danger-small');
+            removeNameBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>`;
+            removeNameBtn.title = "Supprimer ce nom";
+            removeNameBtn.onclick = async () => {
+                nameEntryDiv.remove();
+                await saveReservations();
+                showMessage('Nom retiré de la réservation.', 1500);
+            };
+
+            nameEntryDiv.appendChild(nameSelect);
+            nameEntryDiv.appendChild(newNameInput);
+            nameEntryDiv.appendChild(removeNameBtn);
+            namesListDiv.appendChild(nameEntryDiv);
+        }
+
+        // Fonction pour mettre à jour les articles d'une catégorie
+        function updateItemSelect(categorySelect, itemSelect, newItemInput) {
+            itemSelect.innerHTML = '';
+            const selectedCategory = categorySelect.value;
+
+            const defaultOption = document.createElement('option');
+            defaultOption.value = "";
+            defaultOption.textContent = "-- Article --";
+            itemSelect.appendChild(defaultOption);
+
+            if (selectedCategory && data[selectedCategory]) {
+                data[selectedCategory].forEach(item => {
+                    const option = document.createElement('option');
+                    option.value = item;
+                    option.textContent = item;
+                    itemSelect.appendChild(option);
+                });
+            }
+
+            const newItemOption = document.createElement('option');
+            newItemOption.value = "new-item";
+            newItemOption.textContent = "Autre / Nouveau...";
+            itemSelect.appendChild(newItemOption);
+
+            // Cacher le champ newItemInput par défaut
+            newItemInput.classList.add('hidden');
+            newItemInput.value = '';
+        }
+
+        // Fonction pour ajouter un champ de sélection d'article à une réservation
+        async function addArticleToReservation(articlesListDiv, initialCategory = "", initialName = "") {
+            const articleEntryDiv = document.createElement('div');
+            articleEntryDiv.classList.add('article-entry', 'mb-2');
+
+            const categorySelect = document.createElement('select');
+            categorySelect.classList.add('category-select-article', 'p-2', 'border', 'rounded-md', 'mr-2');
+            categorySelect.addEventListener('change', async () => {
+                updateItemSelect(categorySelect, itemSelect, newItemInput);
+                await saveReservations(); // Sauvegarder après changement de catégorie
+            });
+
+            const defaultCategoryOption = document.createElement('option');
+            defaultCategoryOption.value = "";
+            defaultCategoryOption.textContent = "-- Catégorie --";
+            categorySelect.appendChild(defaultCategoryOption);
+
+            // Populate categories from the 'data' object
+            for (const category in data) {
+                const option = document.createElement('option');
+                option.value = category;
+                option.textContent = category;
+                categorySelect.appendChild(option);
+            }
+
+            const itemSelect = document.createElement('select');
+            itemSelect.classList.add('item-select-article', 'p-2', 'border', 'rounded-md', 'mr-2');
+            itemSelect.addEventListener('change', async () => {
+                if (itemSelect.value === 'new-item') {
+                    newItemInput.classList.remove('hidden');
+                    newItemInput.focus();
+                } else {
+                    newItemInput.classList.add('hidden');
+                    newItemInput.value = '';
+                }
+                await saveReservations(); // Sauvegarder après changement d'article
+            });
+
+            const newItemInput = document.createElement('input');
+            newItemInput.type = 'text';
+            newItemInput.placeholder = 'Nom du nouvel article';
+            newItemInput.classList.add('p-2', 'border', 'rounded-md', 'hidden', 'mr-2');
+            newItemInput.addEventListener('blur', async () => {
+                const selectedCategory = categorySelect.value;
+                if (newItemInput.value.trim() !== '' && selectedCategory) {
+                    if (!data[selectedCategory]) {
+                        data[selectedCategory] = [];
+                    }
+                    if (!data[selectedCategory].includes(newItemInput.value.trim())) {
+                        data[selectedCategory].push(newItemInput.value.trim());
+                        data[selectedCategory].sort((a, b) => a.localeCompare(b));
+                        showMessage(`"${newItemInput.value.trim()}" ajouté à la catégorie "${selectedCategory}".`, 2000);
+                    } else {
+                        showMessage(`"${newItemInput.value.trim()}" existe déjà dans cette catégorie.`, 2000);
+                    }
+                    // Mettre à jour tous les sélecteurs d'articles de la même catégorie
+                    document.querySelectorAll('.category-select-article').forEach(catSel => {
+                        if (catSel.value === selectedCategory) {
+                            const relatedItemSel = catSel.nextElementSibling;
+                            const relatedNewItemInp = relatedItemSel.nextElementSibling;
+                            updateItemSelect(catSel, relatedItemSel, relatedNewItemInp);
+                        }
+                    });
+                    itemSelect.value = newItemInput.value.trim(); // Sélectionner le nouvel article
+                    newItemInput.classList.add('hidden');
+                    newItemInput.value = '';
+                }
+                await saveReservations(); // Sauvegarder après ajout d'un nouvel article
+            });
+
+            // Initialiser les options de l'itemSelect
+            updateItemSelect(categorySelect, itemSelect, newItemInput);
+
+            // Gérer les valeurs initiales si fournies
+            if (initialCategory) {
+                categorySelect.value = initialCategory;
+                updateItemSelect(categorySelect, itemSelect, newItemInput); // Mettre à jour les articles après avoir mis la catégorie
+                if (data[initialCategory] && data[initialCategory].includes(initialName)) {
+                    itemSelect.value = initialName;
+                } else {
+                    itemSelect.value = "new-item";
+                    newItemInput.classList.remove('hidden');
+                    newItemInput.value = initialName;
+                }
+            }
+
+            const removeArticleBtn = document.createElement('button');
+            removeArticleBtn.classList.add('btn', 'btn-danger-small');
+            removeArticleBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>`;
+            removeArticleBtn.title = "Supprimer cet article";
+            removeArticleBtn.onclick = async () => {
+                articleEntryDiv.remove();
+                await saveReservations();
+                showMessage('Article retiré de la réservation.', 1500);
+            };
+
+            articleEntryDiv.appendChild(categorySelect);
+            articleEntryDiv.appendChild(itemSelect);
+            articleEntryDiv.appendChild(newItemInput);
+            articleEntryDiv.appendChild(removeArticleBtn);
+            articlesListDiv.appendChild(articleEntryDiv);
+        }
+
+        // --- Fonctions d'interaction avec l'API Google Apps Script ---
+
+        async function fetchApiData(action, payload = {}) {
+            const url = new URL(GOOGLE_APPS_SCRIPT_API_URL);
+            url.searchParams.append('action', action); // Ajoute l'action comme paramètre GET
+
+            try {
+                let response;
+                if (action === 'saveReservations' || action === 'saveNames' || action === 'saveArticles') {
+                    // Pour POST, utiliser fetch avec method: 'POST' et body
+                    response = await fetch(url.toString(), {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify(payload)
+                    });
+                } else {
+                    // Pour GET, simplement appeler l'URL
+                    response = await fetch(url.toString());
+                }
+
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    throw new Error(`HTTP error! status: ${response.status} - ${errorText}`);
+                }
+                const data = await response.json();
+                if (data.status === 'error') {
+                    throw new Error(data.message);
+                }
+                return data;
+            } catch (error) {
+                console.error(`Erreur lors de l'appel API (${action}):`, error);
+                showMessage(`Erreur: ${error.message}`, 5000);
+                return null; // Retourne null en cas d'erreur
             }
         }
-        // ... (le reste de votre script HTML/JS) ...
+
+        // --- Fonctions de gestion des données ---
+
+        async function saveReservations() {
+            const reservationsToSave = [];
+            document.querySelectorAll('#reservation-table-body tr').forEach(row => {
+                const names = [];
+                row.querySelectorAll('.name-select').forEach(select => {
+                    if (select.value && select.value !== "new-name") {
+                        names.push(select.value);
+                    }
+                });
+                row.querySelectorAll('input[type="text"]').forEach(input => {
+                    // Récupérer les noms entrés manuellement s'ils ne sont pas déjà dans la liste des selects
+                    // S'assurer que c'est bien un input de nom et pas d'article
+                    if (input.classList.contains('name-select') && input.value.trim() !== '' && !names.includes(input.value.trim())) {
+                        names.push(input.value.trim());
+                    }
+                });
+
+                const startDate = row.querySelector('.start-date-input').value;
+                const endDate = row.querySelector('.end-date-input').value;
+
+                const articles = [];
+                row.querySelectorAll('.article-entry').forEach(articleEntry => {
+                    const categorySelect = articleEntry.querySelector('.category-select-article');
+                    const itemSelect = articleEntry.querySelector('.item-select-article');
+                    const newItemInput = articleEntry.querySelector('input[type="text"]');
+
+                    let category = categorySelect ? categorySelect.value : '';
+                    let itemName = '';
+
+                    if (itemSelect && itemSelect.value && itemSelect.value !== "new-item") {
+                        itemName = itemSelect.value;
+                    } else if (newItemInput && newItemInput.value.trim() !== '') {
+                        itemName = newItemInput.value.trim();
+                    }
+
+                    if (category && itemName) {
+                        articles.push({ category: category, name: itemName });
+                    }
+                });
+
+                if (names.length > 0 && startDate && endDate) {
+                    reservationsToSave.push({
+                        names: names,
+                        startDate: startDate,
+                        endDate: endDate,
+                        articles: articles
+                    });
+                }
+            });
+            console.log('Reservations to save:', reservationsToSave);
+            const response = await fetchApiData('saveReservations', { reservations: reservationsToSave });
+            if (response && response.status === 'success') {
+                showMessage('Réservations sauvegardées !', 1500);
+                // Après sauvegarde, recharger pour s'assurer que tout est synchronisé
+                await loadReservations();
+            } else {
+                showMessage('Échec de la sauvegarde des réservations.', 3000);
+            }
+            updateCalendarEvents(); // Mettre à jour le calendrier après sauvegarde
+        }
+
+        async function saveNames() {
+            console.log('Noms à sauvegarder:', existingNames);
+            const response = await fetchApiData('saveNames', { names: existingNames });
+            if (response && response.status === 'success') {
+                showMessage('Noms sauvegardés !', 1500);
+            } else {
+                showMessage('Échec de la sauvegarde des noms.', 3000);
+            }
+        }
+
+        async function saveArticles() {
+            console.log('Articles à sauvegarder:', data);
+            const articlesList = [];
+            for (const category in data) {
+                if (Array.isArray(data[category])) {
+                    data[category].forEach(name => {
+                        articlesList.push({ category: category, name: name });
+                    });
+                }
+            }
+            const response = await fetchApiData('saveArticles', { articles: articlesList });
+            if (response && response.status === 'success') {
+                showMessage('Articles sauvegardés !', 1500);
+            } else {
+                showMessage('Échec de la sauvegarde des articles.', 3000);
+            }
+        }
+
+        // --- Fonctions de gestion de l'interface utilisateur ---
+
+        async function addReservationRow() {
+            const newRow = tableBody.insertRow();
+            newRow.id = `reservation-${++reservationCounter}`; // ID unique pour la ligne
+
+            // Cellule pour le Nom(s)
+            const nameCell = newRow.insertCell();
+            const namesListDiv = document.createElement('div');
+            namesListDiv.classList.add('names-list', 'mb-2');
+            nameCell.appendChild(namesListDiv);
+            await addNameInputToReservation(namesListDiv); // Ajouter le premier champ de nom
+
+            const addNameBtnInternal = document.createElement('button');
+            addNameBtnInternal.classList.add('btn', 'btn-secondary', 'text-sm', 'py-1', 'px-2', 'mb-2');
+            addNameBtnInternal.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4 inline-block mr-1">
+                                                <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v12m6-6H6" />
+                                            </svg> Ajouter un nom`;
+            addNameBtnInternal.onclick = async () => {
+                await addNameInputToReservation(namesListDiv);
+                await saveReservations(); // Sauvegarder les réservations après l'ajout d'un nom
+            };
+            nameCell.appendChild(addNameBtnInternal);
+
+            // Cellule pour la Date Départ
+            const startDateCell = newRow.insertCell();
+            const startDateInput = document.createElement('input');
+            startDateInput.type = 'date';
+            startDateInput.classList.add('start-date-input', 'p-2', 'border', 'rounded-md');
+            startDateInput.addEventListener('change', async () => { await saveReservations(); updateCalendarEvents(); });
+            startDateCell.appendChild(startDateInput);
+
+            // Cellule pour la Date Retour
+            const endDateCell = newRow.insertCell();
+            const endDateInput = document.createElement('input');
+            endDateInput.type = 'date';
+            endDateInput.classList.add('end-date-input', 'p-2', 'border', 'rounded-md');
+            endDateInput.addEventListener('change', async () => { await saveReservations(); updateCalendarEvents(); });
+            endDateCell.appendChild(endDateInput);
+
+            // Cellule pour les Articles
+            const articlesCell = newRow.insertCell();
+            const articlesListDiv = document.createElement('div');
+            articlesListDiv.classList.add('articles-list', 'mb-2');
+            articlesCell.appendChild(articlesListDiv);
+            await addArticleToReservation(articlesListDiv); // Ajouter le premier champ d'article
+
+            const addArticleBtnInternal = document.createElement('button');
+            addArticleBtnInternal.classList.add('btn', 'btn-secondary', 'text-sm', 'py-1', 'px-2');
+            addArticleBtnInternal.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4 inline-block mr-1">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v12m6-6H6" />
+                                                </svg> Ajouter un article`;
+            addArticleBtnInternal.onclick = async () => {
+                await addArticleToReservation(articlesListDiv);
+                await saveReservations(); // Sauvegarder les réservations après l'ajout d'un article
+            };
+            articlesCell.appendChild(addArticleBtnInternal);
+
+            // Cellule pour les actions (Supprimer)
+            const actionCell = newRow.insertCell();
+            const deleteReservationBtn = document.createElement('button');
+            deleteReservationBtn.classList.add('p-2', 'rounded-md', 'hover:bg-red-100', 'block', 'mx-auto');
+            deleteReservationBtn.innerHTML = `
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6 text-red-500 hover:text-red-700">
+                <path stroke-linecap="round" stroke-linejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12.56 0c.342.052.682.107 1.022.166m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" />
+                </svg>
+            `;
+            deleteReservationBtn.title = "Supprimer cette réservation";
+            deleteReservationBtn.onclick = async () => {
+                newRow.remove();
+                await saveReservations(); // Sauvegarder après suppression de la ligne
+                showMessage('Réservation supprimée.', 2000);
+            };
+            actionCell.appendChild(deleteReservationBtn);
+
+            // Déclencher une sauvegarde initiale pour la nouvelle ligne vide
+            await saveReservations();
+        }
+
+        // --- Fonctions du calendrier FullCalendar ---
+
+        function initializeCalendar() {
+            const calendarEl = document.getElementById('calendar');
+            calendar = new FullCalendar.Calendar(calendarEl, {
+                initialView: 'dayGridMonth',
+                locale: 'fr',
+                headerToolbar: {
+                    left: 'prev,next today',
+                    center: 'title',
+                    right: 'dayGridMonth,timeGridWeek,timeGridDay'
+                },
+                events: [], // Les événements seront chargés via updateCalendarEvents
+                eventClick: function(info) {
+                    // Logique à ajouter si vous voulez rendre les événements cliquables
+                    console.log('Event clicked:', info.event.title, info.event.start, info.event.end);
+                    // Vous pourriez ici ouvrir un modal avec les détails de la réservation
+                }
+            });
+            calendar.render();
+        }
+
+        function updateCalendarEvents() {
+            if (!calendar) return; // Ne pas exécuter si le calendrier n'est pas initialisé
+
+            const events = [];
+            document.querySelectorAll('#reservation-table-body tr').forEach(row => {
+                const names = [];
+                row.querySelectorAll('.name-select').forEach(select => {
+                    if (select.value && select.value !== "new-name") {
+                        names.push(select.value);
+                    }
+                });
+                row.querySelectorAll('input[type="text"]').forEach(input => {
+                    // Assurez-vous que c'est bien un input de nom et qu'il a une valeur
+                    if (input.classList.contains('name-input') && input.value.trim() !== '' && !names.includes(input.value.trim())) {
+                        names.push(input.value.trim());
+                    }
+                });
+
+                const startDate = row.querySelector('.start-date-input').value;
+                const endDate = row.querySelector('.end-date-input').value; // Cette date est exclusive dans FullCalendar
+
+                if (names.length > 0 && startDate && endDate) {
+                    // FullCalendar endDate est exclusive, donc si une réservation finit le 10, l'événement doit finir le 11
+                    const adjustedEndDate = new Date(endDate);
+                    adjustedEndDate.setDate(adjustedEndDate.getDate() + 1);
+
+                    events.push({
+                        title: names.join(', '),
+                        start: startDate,
+                        end: adjustedEndDate.toISOString().split('T')[0], // Formater en 'YYYY-MM-DD'
+                        allDay: true,
+                        // Vous pouvez ajouter des couleurs ou d'autres propriétés ici
+                    });
+                }
+            });
+            calendar.setOption('events', events);
+        }
+
+        // --- Initialisation au chargement de la page ---
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            initializeCalendar(); // Initialise le calendrier en premier
+            await loadReservations(); // Charge les réservations et met à jour le tableau
+            updateCalendarEvents(); // Met à jour les événements du calendrier après le chargement des réservations
+
+            addReservationButton.addEventListener('click', addReservationRow);
+        });
+
+        // Les fonctions loadReservations, saveReservations, getArticles, saveArticles, getNames, saveNames
+        // Sont celles que j'ai fournies précédemment et doivent être complètes dans votre script
+        // Vous devez avoir toutes les autres fonctions définies précédemment ici :
+        // - const GOOGLE_APPS_SCRIPT_API_URL = ...
+        // - let existingNames = [];
+        // - let data = {};
+        // - let reservationCounter = 0;
+        // - let calendar;
+        // - const messageBox = ...
+        // - const tableBody = ...
+        // - const addReservationButton = ...
+        // - fetchApiData
+        // - showMessage
+        // - updateAllNameSelects
+        // - addNameInputToReservation
+        // - updateItemSelect
+        // - addArticleToReservation
+        // - saveReservations
+        // - saveNames
+        // - saveArticles
+        // - addReservationRow
+        // - initializeCalendar
+        // - updateCalendarEvents
+
     </script>
 </body>
 </html>
