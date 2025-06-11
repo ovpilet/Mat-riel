@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Réservation Matériel 9-Média</title>
+  <link rel="stylesheet" href="styles.css"/>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@fullcalendar/core@6.1.11/locales/fr.global.min.js"></script>
+</head>
+<body class="bg-gray-100 p-6">
+  <main class="container max-w-4xl mx-auto bg-white rounded-lg shadow p-6">
+    <h1 class="text-3xl font-bold text-center text-gray-700 mb-8">Réservation Matériel 9-Média</h1>
+    <div class="flex gap-4 mb-6 justify-center">
+      <button id="addReservationBtn" class="btn btn-primary">Ajouter une réservation</button>
+      <button id="showCalendarBtn" class="btn btn-secondary">Voir le calendrier</button>
+    </div>
+    <section>
+      <table class="min-w-full table-auto text-sm" id="reservationsTable">
+        <thead>
+          <tr class="bg-gray-100">
+            <th>Nom(s)</th>
+            <th>Date Départ</th>
+            <th>Date Retour</th>
+            <th>Articles</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody id="tableBody"></tbody>
+      </table>
+    </section>
+  </main>
+
+  <div id="messageBox" class="message-box" role="status" aria-live="polite"></div>
+
+  <div id="calendarModal" class="modal" style="display:none;" role="dialog" aria-modal="true" aria-labelledby="calendarTitle">
+    <div class="modal-content">
+      <button id="closeCalendarModal" class="modal-close-btn" aria-label="Fermer le calendrier">×</button>
+      <h2 id="calendarTitle" class="text-xl font-semibold mb-4">Calendrier des Réservations</h2>
+      <div id="calendar"></div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
