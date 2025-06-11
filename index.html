@@ -543,7 +543,7 @@
 
         // Fonction pour ajouter une nouvelle ligne de RESERVATION au tableau
         async function addReservationRow() { 
-            const newRow = tableBody.insertRow();
+            const newRow = tableBody.insertRow(0);
             newRow.id = `reservation-${++reservationCounter}`;
 
             // Cellule pour le Nom(s)
@@ -770,7 +770,7 @@
 
             if (loadedReservationsData && Array.isArray(loadedReservationsData.reservations) && loadedReservationsData.reservations.length > 0) {
                 loadedReservationsData.reservations.forEach(async res => { // Marqué comme async
-                    const newRow = tableBody.insertRow();
+                    const newRow = tableBody.insertRow(0);
                     newRow.id = `reservation-${++reservationCounter}`;
 
                     const nameCell = newRow.insertCell();
@@ -1001,6 +1001,17 @@
         
         // --- LOGIQUE DU CALENDRIER ---
 
+        
+// Fonction utilitaire pour générer une couleur unique par nom
+function getColorFromName(name) {
+    let hash = 0;
+    for (let i = 0; i < name.length; i++) {
+        hash = name.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    const hue = hash % 360;
+    return `hsl(${hue}, 70%, 70%)`;
+}
+
         // Fonction pour initialiser/mettre à jour le calendrier
         function initializeCalendar() {
             if (calendar) {
@@ -1055,7 +1066,7 @@
                         start: startDate,
                         end: end.toISOString().split('T')[0],
                         allDay: true,
-                        color: '#3B82F6'
+                        color: getColorFromName(responsibleName)
                     });
                 }
             }
