@@ -1,0 +1,483 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="utf-8"/>
+    <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+    <title>Réservation Matériel 9-Média (Version Améliorée)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@fullcalendar/core@6.1.11/locales/fr.global.min.js"></script>
+    <style>
+        :root { --main-bg-color: #f3f4f6; --container-bg-color: #ffffff; --text-color: #1f2937; --border-color: #d1d5db; --primary-color: #3b82f6; --primary-hover-color: #2563eb; --danger-color: #ef4444; }
+        body { font-family: 'Inter', sans-serif; background-color: var(--main-bg-color); color: var(--text-color); }
+        .table-container { max-width: 1200px; margin: 2rem auto; padding: 1.5rem; background-color: var(--container-bg-color); border-radius: 0.75rem; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1); }
+        select, input[type="date"], input[type="text"] { width: 100%; padding: 0.5rem; border-radius: 0.375rem; border: 1px solid var(--border-color); box-sizing: border-box; transition: border-color 0.2s; }
+        select:focus, input:focus { outline: 2px solid transparent; outline-offset: 2px; border-color: var(--primary-color); box-shadow: 0 0 0 2px var(--primary-color); }
+        .btn { display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem; padding: 0.625rem 1.25rem; border-radius: 0.375rem; cursor: pointer; transition: background-color 0.2s, opacity 0.2s; font-weight: 500; border: none; white-space: nowrap; }
+        .btn:disabled { opacity: 0.6; cursor: not-allowed; }
+        .btn-primary { background-color: var(--primary-color); color: white; }
+        .btn-primary:not(:disabled):hover { background-color: var(--primary-hover-color); }
+        .btn-success { background-color: #10B981; color: white; }
+        .btn-success:not(:disabled):hover { background-color: #059669; }
+        .btn-icon { padding: 0.5rem; background-color: transparent; }
+        .btn-icon:hover { background-color: #e5e7eb; }
+        .table th, .table td { padding: 0.75rem 1rem; text-align: left; border-bottom: 1px solid #e5e7eb; vertical-align: top; }
+        .table th { background-color: #f9fafb; font-weight: 600; color: #4b5563; }
+        .sub-item-list > div { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem; }
+        .sub-item-list > div > :first-child { flex-grow: 1; }
+        .message-box { position: fixed; top: 20px; left: 50%; transform: translateX(-50%); color: white; padding: 1rem 1.5rem; border-radius: 0.5rem; box-shadow: 0 4px 6px rgba(0,0,0,0.1); z-index: 1000; opacity: 0; transition: opacity 0.5s ease, background-color 0.3s; visibility: hidden; }
+        .message-box.show { opacity: 1; visibility: visible; }
+        .message-box.success { background-color: #10B981; }
+        .message-box.error { background-color: var(--danger-color); }
+        .hidden { display: none !important; }
+        .loader-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255, 255, 255, 0.7); display: flex; justify-content: center; align-items: center; z-index: 5000; }
+        .loader { border: 5px solid #f3f3f3; border-top: 5px solid var(--primary-color); border-radius: 50%; width: 50px; height: 50px; animation: spin 1s linear infinite; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        .modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.6); display: flex; justify-content: center; align-items: center; z-index: 2000; opacity: 0; visibility: hidden; transition: opacity 0.3s; }
+        .modal.open { opacity: 1; visibility: visible; }
+        .modal-content { background-color: white; padding: 2rem; border-radius: 0.5rem; max-width: 90vw; width: 900px; max-height: 90vh; overflow-y: auto; position: relative; }
+        .modal-close-btn { position: absolute; top: 1rem; right: 1rem; background: none; border: none; font-size: 1.5rem; cursor: pointer; color: #6b7280; }
+        .conflict-warning { border-left: 4px solid var(--danger-color); background-color: #fef2f2; }
+        @media (max-width: 768px) {
+            .table thead { display: none; }
+            .table tr { display: block; margin-bottom: 1.5rem; border: 1px solid var(--border-color); border-radius: 0.5rem; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+            .table td { display: block; width: 100%; padding: 0.75rem 1rem; text-align: right; border-bottom: 1px solid #f3f4f6; position: relative; }
+            .table td:last-child { border-bottom: none; }
+            .table td::before { content: attr(data-label); font-weight: bold; position: absolute; left: 1rem; text-align: left; color: #6b7280; }
+        }
+    </style>
+</head>
+<body class="bg-gray-100 p-4">
+
+<div id="loader" class="loader-overlay hidden">
+    <div class="loader"></div>
+</div>
+
+<div class="table-container">
+    <div class="flex flex-wrap justify-between items-center gap-4 mb-6">
+        <h1 class="text-2xl font-semibold text-gray-800">Gestion des Réservations</h1>
+        <div class="flex gap-2" id="main-actions">
+            <button class="btn btn-primary" id="addReservationBtn">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 4.5v15m7.5-7.5h-15"></path></svg>
+                <span>Ajouter</span>
+            </button>
+            <button class="btn btn-success" id="saveBtn" disabled>
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4.5 12.75l6 6 9-13.5"></path></svg>
+                <span>Enregistrer</span>
+            </button>
+        </div>
+    </div>
+    <table class="min-w-full bg-white rounded-lg shadow-sm overflow-hidden table">
+        <thead>
+            <tr>
+                <th class="w-[20%]">Nom(s)</th>
+                <th class="w-[15%]">Date Départ</th>
+                <th class="w-[15%]">Date Retour</th>
+                <th class="w-[40%]">Articles</th>
+                <th class="w-[10%] text-center">Actions</th>
+            </tr>
+        </thead>
+        <tbody id="tableBody">
+            </tbody>
+    </table>
+    <div id="placeholder" class="text-center py-12 text-gray-500 hidden">
+        <p>Aucune réservation pour le moment.</p>
+        <p class="mt-2">Cliquez sur "Ajouter" pour créer une nouvelle réservation.</p>
+    </div>
+</div>
+
+<div class="message-box" id="messageBox"></div>
+
+<div class="modal" id="calendarModal">
+    <div class="modal-content">
+        <button class="modal-close-btn" id="closeCalendarModal" aria-label="Fermer la vue calendrier">&times;</button>
+        <h2 class="text-xl font-semibold mb-4">Calendrier des Réservations</h2>
+        <div id="calendar"></div>
+    </div>
+</div>
+
+<script>
+// Encapsulation de toute la logique dans une IIFE (Immediately Invoked Function Expression)
+// pour éviter de polluer l'espace de nom global.
+(function() {
+    'use strict';
+
+    // --- CONFIGURATION ---
+    const GOOGLE_APPS_SCRIPT_API_URL = 'https://script.google.com/macros/s/AKfycbxeYItICJG8R31TnsgMTlhoed9bhp5lnaa-9cqAH933deMxb1NlhBE_fsNaCMfp4pu8/exec';
+
+    // --- ÉTAT DE L'APPLICATION ---
+    // La "source de vérité" de notre application. Le DOM sera une simple réflexion de cet état.
+    const state = {
+        reservations: [],
+        articles: {},
+        noms: [],
+        isLoading: false,
+        hasUnsavedChanges: false,
+    };
+
+    // --- SÉLECTEURS DOM ---
+    const dom = {
+        loader: document.getElementById('loader'),
+        tableBody: document.getElementById('tableBody'),
+        placeholder: document.getElementById('placeholder'),
+        addBtn: document.getElementById('addReservationBtn'),
+        saveBtn: document.getElementById('saveBtn'),
+        messageBox: document.getElementById('messageBox'),
+        calendarModal: document.getElementById('calendarModal'),
+        closeCalendarModalBtn: document.getElementById('closeCalendarModal'),
+        calendarEl: document.getElementById('calendar')
+    };
+    
+    // --- FONCTIONS DE RENDU (GÉNÉRATION DU HTML) ---
+
+    /**
+     * Point d'entrée principal pour redessiner l'interface utilisateur.
+     * Appelé à chaque fois que l'état change.
+     */
+    function render() {
+        // Gérer l'état de chargement
+        dom.loader.classList.toggle('hidden', !state.isLoading);
+        dom.addBtn.disabled = state.isLoading;
+        
+        // Gérer le bouton de sauvegarde
+        dom.saveBtn.disabled = !state.hasUnsavedChanges || state.isLoading;
+        dom.saveBtn.innerHTML = state.isLoading 
+            ? `<span>Enregistrement...</span>`
+            : `<svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4.5 12.75l6 6 9-13.5"></path></svg><span>Enregistrer</span>`;
+
+        // Vider le tableau
+        dom.tableBody.innerHTML = '';
+        
+        // Afficher un message si aucune réservation
+        dom.placeholder.classList.toggle('hidden', state.reservations.length > 0);
+        
+        // Rendre chaque ligne de réservation
+        state.reservations.forEach(res => {
+            const row = document.createElement('tr');
+            row.id = res.id;
+            row.className = res.hasConflict ? 'conflict-warning' : '';
+            row.innerHTML = `
+                <td data-label="Nom(s)">
+                    <div class="sub-item-list">${res.names.map((name, index) => renderNameInput(res.id, index, name)).join('')}</div>
+                    <button class="btn-add-subitem text-xs text-blue-600 hover:text-blue-800 font-semibold" data-action="add-name" data-res-id="${res.id}">+ Ajouter un nom</button>
+                </td>
+                <td data-label="Date Départ"><input type="date" value="${res.startDate}" data-action="update-date" data-field="startDate" data-res-id="${res.id}"></td>
+                <td data-label="Date Retour"><input type="date" value="${res.endDate}" data-action="update-date" data-field="endDate" data-res-id="${res.id}"></td>
+                <td data-label="Articles">
+                    <div class="sub-item-list">${res.articles.map((article, index) => renderArticleInput(res.id, index, article)).join('')}</div>
+                    <button class="btn-add-subitem text-xs text-blue-600 hover:text-blue-800 font-semibold" data-action="add-article" data-res-id="${res.id}">+ Ajouter un article</button>
+                </td>
+                <td data-label="Actions" class="text-center">
+                    <button class="btn-icon" data-action="delete-reservation" data-res-id="${res.id}" aria-label="Supprimer la réservation">
+                        <svg class="w-6 h-6 text-gray-400 hover:text-red-500 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12.56 0c.342.052.682.107 1.022.166m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0"></path></svg>
+                    </button>
+                </td>
+            `;
+            dom.tableBody.appendChild(row);
+        });
+    }
+
+    function renderNameInput(resId, index, name) {
+        return `
+            <div>
+                <input type="text" list="existing-names" value="${name}" data-action="update-name" data-res-id="${resId}" data-index="${index}" placeholder="Nom du contact">
+                <button class="btn-icon" data-action="remove-name" data-res-id="${resId}" data-index="${index}" aria-label="Supprimer ce nom">
+                    <svg class="w-5 h-5 text-gray-400 hover:text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                </button>
+            </div>
+        `;
+    }
+
+    function renderArticleInput(resId, index, article) {
+        const categoriesOptions = Object.keys(state.articles).map(cat => `<option value="${cat}">${cat}</option>`).join('');
+        const itemsOptions = (state.articles[article.category] || []).map(item => `<option value="${item}">${item}</option>`).join('');
+        return `
+            <div>
+                <select data-action="update-article-category" data-res-id="${resId}" data-index="${index}">
+                    <option value="">-- Catégorie --</option>
+                    ${categoriesOptions}
+                    <option value="${article.category}" selected>${article.category}</option>
+                </select>
+                <select data-action="update-article-name" data-res-id="${resId}" data-index="${index}" ${!article.category ? 'disabled' : ''}>
+                    <option value="">-- Article --</option>
+                    ${itemsOptions}
+                    <option value="${article.name}" selected>${article.name}</option>
+                </select>
+                <button class="btn-icon" data-action="remove-article" data-res-id="${resId}" data-index="${index}" aria-label="Supprimer cet article">
+                    <svg class="w-5 h-5 text-gray-400 hover:text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                </button>
+            </div>
+        `;
+    }
+    
+    // --- GESTION DES ÉVÉNEMENTS (EVENT HANDLING) ---
+    
+    /**
+     * Initialise tous les écouteurs d'événements.
+     * Utilise la délégation d'événements pour la performance.
+     */
+    function initEventListeners() {
+        dom.addBtn.addEventListener('click', handleAddReservation);
+        dom.saveBtn.addEventListener('click', handleSave);
+
+        // Délégation d'événements sur le corps du tableau
+        dom.tableBody.addEventListener('change', handleTableChange);
+        dom.tableBody.addEventListener('click', handleTableClick);
+        dom.tableBody.addEventListener('input', handleTableInput); // Pour les nouveaux noms/articles
+    }
+
+    function handleAddReservation() {
+        const newReservation = {
+            id: `temp-${Date.now()}`,
+            names: [''],
+            startDate: new Date().toISOString().split('T')[0],
+            endDate: new Date().toISOString().split('T')[0],
+            articles: [{ category: '', name: '' }],
+            hasConflict: false
+        };
+        state.reservations.unshift(newReservation);
+        markAsDirty();
+        render();
+    }
+    
+    // Un seul gestionnaire pour tous les changements dans le tableau
+    function handleTableChange(e) {
+        const target = e.target;
+        const action = target.dataset.action;
+        if (!action) return;
+        
+        const resId = target.dataset.resId;
+        const res = state.reservations.find(r => r.id === resId);
+        if (!res) return;
+
+        switch(action) {
+            case 'update-date':
+                res[target.dataset.field] = target.value;
+                break;
+            case 'update-article-category':
+                res.articles[target.dataset.index].category = target.value;
+                // Réinitialiser le nom de l'article lors du changement de catégorie
+                res.articles[target.dataset.index].name = ''; 
+                break;
+            case 'update-article-name':
+                res.articles[target.dataset.index].name = target.value;
+                break;
+        }
+        
+        markAsDirty();
+        checkForConflicts();
+        render();
+    }
+    
+    // Gère les clics pour ajouter/supprimer des éléments
+    function handleTableClick(e) {
+        const button = e.target.closest('button');
+        if (!button) return;
+        const action = button.dataset.action;
+        if (!action) return;
+        
+        const resId = button.dataset.resId;
+        const res = state.reservations.find(r => r.id === resId);
+        if (!res) return;
+        
+        const index = parseInt(button.dataset.index, 10);
+
+        switch(action) {
+            case 'add-name':
+                res.names.push('');
+                break;
+            case 'remove-name':
+                res.names.splice(index, 1);
+                break;
+            case 'add-article':
+                res.articles.push({ category: '', name: '' });
+                break;
+            case 'remove-article':
+                res.articles.splice(index, 1);
+                break;
+            case 'delete-reservation':
+                state.reservations = state.reservations.filter(r => r.id !== resId);
+                break;
+        }
+
+        markAsDirty();
+        checkForConflicts();
+        render();
+    }
+    
+    // Gère la saisie pour les champs texte (noms)
+    function handleTableInput(e) {
+        const target = e.target;
+        if (target.dataset.action !== 'update-name') return;
+        
+        const resId = target.dataset.resId;
+        const index = parseInt(target.dataset.index, 10);
+        const res = state.reservations.find(r => r.id === resId);
+        if (!res) return;
+        
+        res.names[index] = target.value;
+        markAsDirty();
+    }
+
+    // --- LOGIQUE MÉTIER & API ---
+
+    function markAsDirty() {
+        if (!state.hasUnsavedChanges) {
+            state.hasUnsavedChanges = true;
+            render();
+        }
+    }
+
+    async function handleSave() {
+        state.isLoading = true;
+        render();
+
+        if (checkForConflicts(true)) { // true pour afficher une alerte
+            state.isLoading = false;
+            render();
+            return;
+        }
+
+        const payload = state.reservations.map(({ id, hasConflict, ...rest }) => rest);
+        const result = await postApiData('saveReservations', payload);
+        
+        if (result !== null) {
+            showMessage('Modifications enregistrées avec succès !', 'success');
+            state.hasUnsavedChanges = false;
+        } else {
+            showMessage("Erreur lors de l'enregistrement.", 'error');
+        }
+        
+        state.isLoading = false;
+        await loadInitialData(); // Recharger les données pour avoir les IDs à jour
+    }
+
+    function checkForConflicts(showAlert = false) {
+        let conflictFound = false;
+        const articleReservations = new Map();
+
+        // Réinitialiser les conflits
+        state.reservations.forEach(r => r.hasConflict = false);
+
+        // Construire une map des réservations par article
+        state.reservations.forEach(res => {
+            res.articles.forEach(article => {
+                if (!article.name || !res.startDate || !res.endDate) return;
+                const key = `${article.category}-${article.name}`;
+                if (!articleReservations.has(key)) {
+                    articleReservations.set(key, []);
+                }
+                articleReservations.get(key).push({
+                    id: res.id,
+                    start: new Date(res.startDate),
+                    end: new Date(res.endDate)
+                });
+            });
+        });
+
+        // Vérifier les conflits pour chaque article
+        for (const [articleKey, reservations] of articleReservations.entries()) {
+            for (let i = 0; i < reservations.length; i++) {
+                for (let j = i + 1; j < reservations.length; j++) {
+                    const r1 = reservations[i];
+                    const r2 = reservations[j];
+
+                    // Vérification de chevauchement de dates
+                    if (r1.start <= r2.end && r2.start <= r1.end) {
+                        conflictFound = true;
+                        const res1 = state.reservations.find(r => r.id === r1.id);
+                        const res2 = state.reservations.find(r => r.id === r2.id);
+                        if(res1) res1.hasConflict = true;
+                        if(res2) res2.hasConflict = true;
+                    }
+                }
+            }
+        }
+        
+        if (conflictFound && showAlert) {
+            showMessage(`Conflit détecté ! Un ou plusieurs articles sont réservés sur les mêmes dates.`, 'error', 5000);
+        }
+        return conflictFound;
+    }
+    
+    // --- COMMUNICATIONS API ---
+
+    async function fetchApiData(action) {
+        try {
+            const response = await fetch(`${GOOGLE_APPS_SCRIPT_API_URL}?action=${action}`);
+            if (!response.ok) throw new Error(`Erreur HTTP : ${response.status}`);
+            const result = await response.json();
+            if (result.status !== 200) throw new Error(`Erreur API : ${result.message || 'Inconnue'}`);
+            return result.data;
+        } catch (error) {
+            showMessage(`Erreur de chargement (${action}): ${error.message}`, 'error');
+            return null;
+        }
+    }
+
+    async function postApiData(action, payload) {
+        try {
+            const response = await fetch(`${GOOGLE_APPS_SCRIPT_API_URL}?action=${action}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                body: JSON.stringify(payload),
+            });
+            if (!response.ok) throw new Error(`Erreur HTTP : ${response.status}`);
+            const result = await response.json();
+            if (result.status !== 200) throw new Error(`Erreur API : ${result.message || 'Inconnue'}`);
+            return result.data;
+        } catch (error) {
+            showMessage(`Erreur d'enregistrement (${action}): ${error.message}`, 'error');
+            return null;
+        }
+    }
+    
+    // --- UTILITAIRES ---
+    
+    function showMessage(text, type = 'success', duration = 3000) {
+        dom.messageBox.textContent = text;
+        dom.messageBox.className = 'message-box show'; // Reset classes
+        dom.messageBox.classList.add(type);
+        setTimeout(() => {
+            dom.messageBox.classList.remove('show');
+        }, duration);
+    }
+    
+    // --- INITIALISATION ---
+
+    async function loadInitialData() {
+        state.isLoading = true;
+        render();
+
+        const [namesData, articlesData, reservationsData] = await Promise.all([
+            fetchApiData('getNames'),
+            fetchApiData('getArticles'),
+            fetchApiData('getReservations')
+        ]);
+        
+        state.noms = namesData?.names || [];
+        state.articles = articlesData?.articles || {};
+
+        // Ajouter un ID unique à chaque réservation chargée
+        state.reservations = (reservationsData?.reservations || []).map((res, i) => ({
+            ...res,
+            id: `res-${Date.now()}-${i}`,
+            hasConflict: false
+        }));
+
+        state.isLoading = false;
+        state.hasUnsavedChanges = false;
+        checkForConflicts();
+        render();
+    }
+
+    // --- Point d'entrée de l'application ---
+    document.addEventListener('DOMContentLoaded', () => {
+        initEventListeners();
+        loadInitialData();
+    });
+
+})();
+</script>
+</body>
+</html>
