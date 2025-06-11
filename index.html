@@ -190,7 +190,7 @@
 </style></head>
 <body class="bg-gray-100 p-4">
 <div class="table-container">
-<h1 class="text-2xl font-semibold mb-6 text-center text-gray-700">Réservation Matériel 9_Média</h1>
+<h1 class="text-2xl font-semibold mb-6 text-center text-gray-700">Réservation Matériel 9 Média</h1>
 <div class="flex gap-4 mb-4">
 <button class="btn btn-primary" id="addReservationBtn">
 <svg class="w-5 h-5 inline-block mr-1" fill="none" stroke="currentColor" stroke-width="1.5" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
@@ -543,7 +543,7 @@
 
         // Fonction pour ajouter une nouvelle ligne de RESERVATION au tableau
         async function addReservationRow() { 
-            const newRow = tableBody.insertRow(0);
+            const newRow = tableBody.insertRow();
             newRow.id = `reservation-${++reservationCounter}`;
 
             // Cellule pour le Nom(s)
@@ -770,7 +770,7 @@
 
             if (loadedReservationsData && Array.isArray(loadedReservationsData.reservations) && loadedReservationsData.reservations.length > 0) {
                 loadedReservationsData.reservations.forEach(async res => { // Marqué comme async
-                    const newRow = tableBody.insertRow(0);
+                    const newRow = tableBody.insertRow();
                     newRow.id = `reservation-${++reservationCounter}`;
 
                     const nameCell = newRow.insertCell();
@@ -1001,17 +1001,6 @@
         
         // --- LOGIQUE DU CALENDRIER ---
 
-        
-// Fonction utilitaire pour générer une couleur unique par nom
-function getColorFromName(name) {
-    let hash = 0;
-    for (let i = 0; i < name.length; i++) {
-        hash = name.charCodeAt(i) + ((hash << 5) - hash);
-    }
-    const hue = hash % 360;
-    return `hsl(${hue}, 70%, 70%)`;
-}
-
         // Fonction pour initialiser/mettre à jour le calendrier
         function initializeCalendar() {
             if (calendar) {
@@ -1066,7 +1055,7 @@ function getColorFromName(name) {
                         start: startDate,
                         end: end.toISOString().split('T')[0],
                         allDay: true,
-                        color: getColorFromName(responsibleName)
+                        color: '#3B82F6'
                     });
                 }
             }
