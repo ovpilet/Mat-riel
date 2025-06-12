@@ -31,12 +31,19 @@ body {
 .modal-close-btn { position: absolute; top: 1rem; right: 1rem; background: none; border: none; font-size: 2rem; color: #4B5563; cursor: pointer; }
 
 @media (max-width: 640px) {
-  .modal-content { width: 95vw; padding: 1rem; }
-  table, thead, tbody, th, td, tr { display: block; }
-  thead { display: none; }
-  tr { margin-bottom: 1rem; }
-  td { padding: 0.5rem 0; border-bottom: 1px solid #eee; }
-  td:before { content: attr(data-label); font-weight: bold; color: #6b7280; display: block; }
+  .modal-content {
+    width: 99vw !important;
+    min-width: 0 !important;
+    padding: 0.3rem !important;
+    max-height: 95vh !important;
+  }
+  #tui-calendar-container {
+    min-width: 0 !important;
+    width: 98vw !important;
+    height: 60vh !important;
+    min-height: 220px !important;
+    font-size: 0.85rem !important;
+  }
 }
 
 select, input[type="date"], input[type="text"] {
