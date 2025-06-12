@@ -281,7 +281,6 @@ showCalendarBtn.onclick = () => {
   setTimeout(() => {
     if (!calendar) {
 calendar = new FullCalendar.Calendar(document.getElementById('calendar'), {
-  plugins: [ FullCalendar.DayGrid ],
   locale: 'fr',
   initialView: 'dayGridMonth',
   height: 'auto',
