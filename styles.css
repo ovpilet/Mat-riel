@@ -77,27 +77,24 @@ select, input[type="date"], input[type="text"] {
   border-left: 6px solid #dc2626 !important;
 }
 @media (max-width: 640px) {
-  #calendar {
-    min-width: 0 !important;
+  #calendar-modal-content {
     width: 100vw !important;
     max-width: 100vw !important;
     min-height: 340px !important;
-    height: 340px !important;
+    height: 65vh !important;
+    overflow: auto !important;
     background: white !important;
-    padding: 0 !important;
-    margin: 0 auto !important;
-    overflow: visible !important;
     box-sizing: border-box !important;
+  }
+  #calendar {
+    height: 100% !important;
+    min-height: 340px !important;
+    background: white !important;
   }
   .fc {
     font-size: 0.85rem !important;
   }
-  .fc-daygrid-body, .fc-daygrid, .fc-scrollgrid {
-    min-height: 240px !important;
-    height: 240px !important;
-    min-width: 0 !important;
-  }
-  .fc-view {
+  .fc-view, .fc-daygrid-body, .fc-daygrid, .fc-scrollgrid {
     min-height: 240px !important;
     height: 240px !important;
   }
