@@ -1,50 +1,28 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-  <meta charset="utf-8"/>
+  <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Réservation Matériel 9-Média</title>
-  <link rel="stylesheet" href="styles.css"/>
-<script src="https://cdn.tailwindcss.com"></script>
-<script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@fullcalendar/daygrid@6.1.11/index.global.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@fullcalendar/core@6.1.11/locales/fr.global.min.js"></script>
+  <link rel="stylesheet" href="https://uicdn.toast.com/tui-calendar/latest/tui-calendar.min.css" />
+  <link rel="stylesheet" href="styles.css" />
 </head>
-<body class="bg-gray-100 p-6">
-  <main class="container max-w-4xl mx-auto bg-white rounded-lg shadow p-6">
-    <h1 class="text-3xl font-bold text-center text-gray-700 mb-8">Réservation Matériel 9-Média</h1>
-    <div class="flex gap-4 mb-6 justify-center">
-      <button id="addReservationBtn" class="btn btn-primary">Ajouter une réservation</button>
-      <button id="showCalendarBtn" class="btn btn-secondary">Voir le calendrier</button>
-    </div>
-    <section>
-      <table class="min-w-full table-auto text-sm divide-y divide-gray-200">
-        <thead class="bg-gray-100">
-          <tr>
-            <th>Nom(s)</th>
-            <th>Date Départ</th>
-            <th>Date Retour</th>
-            <th>Articles</th>
-            <th>Action</th>
-          </tr>
-        </thead>
-        <tbody id="tableBody" class="divide-y divide-gray-200"></tbody>
-      </table>
-    </section>
-  </main>
+<body class="bg-gray-100 flex flex-col items-center min-h-screen">
+  <div class="container mx-auto px-4 py-8">
+    <h1 class="text-3xl font-bold mb-6 text-center">Réservation Matériel 9-Média</h1>
+    <button id="showCalendarBtn" class="bg-blue-600 text-white px-4 py-2 rounded mb-4">Voir le calendrier</button>
+  </div>
 
-  <div id="messageBox" class="message-box" role="status" aria-live="polite"></div>
-
+  <!-- Modal calendrier -->
   <div id="calendarModal" class="modal" style="display:none;" role="dialog" aria-modal="true" aria-labelledby="calendarTitle">
     <div class="modal-content calendar-modal-content">
       <button id="closeCalendarModal" class="modal-close-btn" aria-label="Fermer le calendrier">×</button>
       <h2 id="calendarTitle" class="text-xl font-semibold mb-4">Calendrier des Réservations</h2>
-      <div id="calendar-modal-content" style="width:100vw; max-width:100vw; height:65vh; min-height:340px; display:block; overflow:auto; background:white;">
-        <div id="calendar" style="height:100%;"></div>
-      </div>
+      <div id="tui-calendar-container"></div>
     </div>
   </div>
 
+  <script src="https://uicdn.toast.com/tui-calendar/latest/tui-calendar.min.js"></script>
   <script src="app.js"></script>
 </body>
 </html>
