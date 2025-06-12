@@ -284,7 +284,7 @@ calendar = new FullCalendar.Calendar(document.getElementById('calendar'), {
   locale: 'fr',
   initialView: 'dayGridMonth',
   height: 'auto',
-  aspectRatio: window.innerWidth < 640 ? 0.6 : 1.7,
+  aspectRatio: window.innerWidth < 640 ? 0.45 : 1.7,
   expandRows: true,
   events: reservations.flatMap(res =>
     res.articles.map(a => ({
