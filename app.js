@@ -1,29 +1,52 @@
 let tuiCalendar = null;
+let reservations = [];
 
 const showCalendarBtn = document.getElementById('showCalendarBtn');
 const calendarModal = document.getElementById('calendarModal');
 const closeCalendarModal = document.getElementById('closeCalendarModal');
 const calendarContainer = document.getElementById('tui-calendar-container');
+const reservationForm = document.getElementById('reservationForm');
+const reservationsList = document.getElementById('reservationsList');
 
-// Exemple d'événements, à remplacer par tes vraies réservations
-const events = [
-  {
-    id: '1',
+function renderReservations() {
+  reservationsList.innerHTML = '';
+  reservations.forEach((res, idx) => {
+    const li = document.createElement('li');
+    li.textContent = `${res.name} - ${res.item} (${res.start} → ${res.end})`;
+    reservationsList.appendChild(li);
+  });
+}
+
+reservationForm.onsubmit = (e) => {
+  e.preventDefault();
+  const name = document.getElementById('name').value.trim();
+  const item = document.getElementById('item').value.trim();
+  const start = document.getElementById('start').value;
+  const end = document.getElementById('end').value;
+  if (!name || !item || !start || !end) return;
+  reservations.push({ name, item, start, end });
+  renderReservations();
+  reservationForm.reset();
+  updateCalendar();
+};
+
+function getCalendarEvents() {
+  return reservations.map((r, idx) => ({
+    id: String(idx),
     calendarId: '1',
-    title: 'Drone FPV DJI A',
+    title: `${r.name} - ${r.item}`,
     category: 'allday',
-    start: '2025-06-10',
-    end: '2025-06-13',
-  },
-  {
-    id: '2',
-    calendarId: '1',
-    title: 'DJI MIC 1',
-    category: 'allday',
-    start: '2025-06-15',
-    end: '2025-06-17',
+    start: r.start,
+    end: r.end,
+  }));
+}
+
+function updateCalendar() {
+  if (tuiCalendar) {
+    tuiCalendar.clear();
+    tuiCalendar.createSchedules(getCalendarEvents());
   }
-];
+}
 
 function openCalendarModal() {
   calendarModal.style.display = 'flex';
@@ -39,11 +62,13 @@ function openCalendarModal() {
         allday: event => event.title,
       }
     });
-    tuiCalendar.createSchedules(events); // Ajoute les événements une seule fois
+    tuiCalendar.createSchedules(getCalendarEvents());
+  } else {
+    updateCalendar();
   }
   setTimeout(() => {
     tuiCalendar.render();
-  }, 100); // Forcer le render après ouverture modale
+  }, 100);
 }
 
 function closeCalendar() {
@@ -58,3 +83,6 @@ window.onclick = function(event) {
     closeCalendar();
   }
 };
+
+// Initial rendering of reservations
+renderReservations();
