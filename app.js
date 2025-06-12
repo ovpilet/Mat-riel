@@ -280,22 +280,22 @@ showCalendarBtn.onclick = () => {
   calendarModal.style.display = 'flex';
   setTimeout(() => {
     if (!calendar) {
-      calendar = new FullCalendar.Calendar(document.getElementById('calendar'), {
-        locale: 'fr',
-        initialView: 'dayGridMonth',
-        height: 340, // <--- force une hauteur fixe
-        aspectRatio: window.innerWidth < 640 ? 0.7 : 1.7,
-        expandRows: true,
-        events: reservations.flatMap(res =>
-          res.articles.map(a => ({
-            title: (res.names.filter(Boolean).join(', ') ? res.names.filter(Boolean).join(', ') + ' - ' : '') + a.category + ': ' + a.name,
-            start: res.startDate,
-            end: res.endDate,
-            allDay: true,
-            color: colorForName(res.names[0])
-          }))
-        )
-      });
+calendar = new FullCalendar.Calendar(document.getElementById('calendar'), {
+  locale: 'fr',
+  initialView: 'dayGridMonth',
+  height: '100%', // <--- c'est important
+  aspectRatio: 0.75,
+  expandRows: true,
+  events: reservations.flatMap(res =>
+    res.articles.map(a => ({
+      title: (res.names.filter(Boolean).join(', ') ? res.names.filter(Boolean).join(', ') + ' - ' : '') + a.category + ': ' + a.name,
+      start: res.startDate,
+      end: res.endDate,
+      allDay: true,
+      color: colorForName(res.names[0])
+    }))
+  )
+});
       calendar.render();
     }
     // Forcer le resize du calendrier après l'ouverture de la modal
