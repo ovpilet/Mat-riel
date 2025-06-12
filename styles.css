@@ -76,3 +76,10 @@ select, input[type="date"], input[type="text"] {
   background: #fee2e2 !important;
   border-left: 6px solid #dc2626 !important;
 }
+@media (max-width: 640px) {
+  #calendar {
+    min-width: 0 !important;
+    width: 100vw !important;
+    overflow-x: auto !important;
+  }
+}
