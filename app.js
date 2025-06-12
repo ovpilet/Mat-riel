@@ -50,25 +50,24 @@ function updateCalendar() {
 
 function openCalendarModal() {
   calendarModal.style.display = 'flex';
-  if (!tuiCalendar) {
-    tuiCalendar = new tui.Calendar('#tui-calendar-container', {
-      defaultView: 'month',
-      useCreationPopup: false,
-      useDetailPopup: true,
-      isReadOnly: true,
-      month: { visibleWeeksCount: 6 },
-      template: {
-        monthDayname: dayname => dayname.label,
-        allday: event => event.title,
-      }
-    });
-    tuiCalendar.createSchedules(getCalendarEvents());
-  } else {
-    updateCalendar();
-  }
+
   setTimeout(() => {
-    tuiCalendar.render();
-  }, 100);
+    if (!tuiCalendar) {
+      tuiCalendar = new tui.Calendar('#tui-calendar-container', {
+        defaultView: 'month',
+        useCreationPopup: false,
+        useDetailPopup: true,
+        isReadOnly: true,
+        month: { visibleWeeksCount: 6 },
+        template: {
+          monthDayname: dayname => dayname.label,
+          allday: event => event.title,
+        }
+      });
+    }
+    updateCalendar();
+    tuiCalendar.render(); // Force le render à chaque ouverture
+  }, 100); // Délai pour garantir que la modale est visible
 }
 
 function closeCalendar() {
