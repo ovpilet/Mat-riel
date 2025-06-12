@@ -282,10 +282,11 @@ showCalendarBtn.onclick = () => {
     if (!calendar) {
 calendar = new FullCalendar.Calendar(document.getElementById('calendar'), {
   locale: 'fr',
-  initialView: window.innerWidth < 640 ? 'listMonth' : 'dayGridMonth', // Vue spéciale pour mobile
+  initialView: 'dayGridMonth', // Toujours la vue grille, même sur mobile
   height: 'auto',
   contentHeight: 'auto',
-  aspectRatio: window.innerWidth < 640 ? 0.8 : 1.7,
+  aspectRatio: window.innerWidth < 640 ? 0.6 : 1.7, // Plus petit ratio sur mobile
+  handleWindowResize: true,
   expandRows: true,
   events: reservations.flatMap(res =>
     res.articles.map(a => ({
