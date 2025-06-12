@@ -281,12 +281,11 @@ showCalendarBtn.onclick = () => {
   setTimeout(() => {
     if (!calendar) {
 calendar = new FullCalendar.Calendar(document.getElementById('calendar'), {
+  plugins: [ FullCalendar.DayGrid ],
   locale: 'fr',
-  initialView: 'dayGridMonth', // Toujours la vue grille, même sur mobile
+  initialView: 'dayGridMonth',
   height: 'auto',
-  contentHeight: 'auto',
-  aspectRatio: window.innerWidth < 640 ? 0.6 : 1.7, // Plus petit ratio sur mobile
-  handleWindowResize: true,
+  aspectRatio: window.innerWidth < 640 ? 0.6 : 1.7,
   expandRows: true,
   events: reservations.flatMap(res =>
     res.articles.map(a => ({
