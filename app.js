@@ -280,20 +280,23 @@ showCalendarBtn.onclick = () => {
   calendarModal.style.display = 'flex';
   setTimeout(() => {
     if (!calendar) {
-      calendar = new FullCalendar.Calendar(document.getElementById('calendar'), {
-        locale: 'fr',
-        initialView: 'dayGridMonth',
-        height: 'auto',
-        events: reservations.flatMap(res =>
-          res.articles.map(a => ({
-            title: (res.names.filter(Boolean).join(', ') ? res.names.filter(Boolean).join(', ') + ' - ' : '') + a.category + ': ' + a.name,
-            start: res.startDate,
-            end: res.endDate,
-            allDay: true,
-            color: colorForName(res.names[0])
-          }))
-        )
-      });
+calendar = new FullCalendar.Calendar(document.getElementById('calendar'), {
+  locale: 'fr',
+  initialView: window.innerWidth < 640 ? 'listMonth' : 'dayGridMonth', // Vue spéciale pour mobile
+  height: 'auto',
+  contentHeight: 'auto',
+  aspectRatio: window.innerWidth < 640 ? 0.8 : 1.7,
+  expandRows: true,
+  events: reservations.flatMap(res =>
+    res.articles.map(a => ({
+      title: (res.names.filter(Boolean).join(', ') ? res.names.filter(Boolean).join(', ') + ' - ' : '') + a.category + ': ' + a.name,
+      start: res.startDate,
+      end: res.endDate,
+      allDay: true,
+      color: colorForName(res.names[0])
+    }))
+  )
+});
       calendar.render();
     }
   }, 100); // Attend que la modale soit visible
